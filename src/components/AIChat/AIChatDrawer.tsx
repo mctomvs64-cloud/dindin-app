@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useMediaQuery } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile"; // Corrigido de useMediaQuery para useIsMobile
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AIChatWindow } from "./AIChatWindow";
@@ -13,7 +13,7 @@ interface AIChatDrawerProps {
 }
 
 export function AIChatDrawer({ isOpen, onClose }: AIChatDrawerProps) {
-  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const isDesktop = !useIsMobile(); // Usando useIsMobile e invertendo para isDesktop
 
   if (isDesktop) {
     return (
