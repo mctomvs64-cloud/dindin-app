@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useWorkspace } from "@/hooks/useWorkspace";
 import { Button } from "@/components/ui/button";
 import { Plus, Pencil, Trash2, Target, TrendingUp, Calendar } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -37,6 +38,7 @@ interface Goal {
 
 export default function GoalsEnhanced() {
   const { user } = useAuth();
+  const { currentWorkspace } = useWorkspace();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
@@ -57,12 +59,14 @@ export default function GoalsEnhanced() {
   });
 
   useEffect(() => {
-    if (user) {
+    if (user && currentWorkspace) {
       loadData();
     }
-  }, [user]);
+  }, [user, currentWorkspace]);
 
   const loadData = async () => {
+    if (!currentWorkspace) return;
+
     try {
       const [goalsRes, categoriesRes, projectsRes] = await Promise.all([
         supabase
@@ -78,15 +82,18 @@ export default function GoalsEnhanced() {
             )
           `)
           .eq("user_id", user?.id)
+          .eq("workspace_id", currentWorkspace.id)
           .order("created_at", { ascending: false }),
         supabase
           .from("categories")
           .select("*")
-          .eq("user_id", user?.id),
+          .eq("user_id", user?.id)
+          .eq("workspace_id", currentWorkspace.id),
         supabase
           .from("projects")
           .select("id, name")
           .eq("user_id", user?.id)
+          .eq("workspace_id", currentWorkspace.id)
           .eq("status", "active"),
       ]);
 
@@ -130,6 +137,7 @@ export default function GoalsEnhanced() {
     try {
       const goalData = {
         user_id: user?.id,
+        workspace_id: currentWorkspace?.id,
         name: validationResult.data.name,
         description: validationResult.data.description || null,
         target_amount: validationResult.data.target_amount,

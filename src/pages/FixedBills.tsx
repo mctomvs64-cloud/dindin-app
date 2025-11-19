@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useWorkspace } from "@/hooks/useWorkspace";
 import { Button } from "@/components/ui/button";
 import { Plus, Pencil, Trash2, Calendar, DollarSign, CheckCircle2, AlertCircle, Upload } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -45,6 +46,7 @@ interface BillStats {
 
 export default function FixedBills() {
   const { user } = useAuth();
+  const { currentWorkspace } = useWorkspace();
   const [bills, setBills] = useState<FixedBill[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [stats, setStats] = useState<BillStats | null>(null);
@@ -64,12 +66,14 @@ export default function FixedBills() {
   });
 
   useEffect(() => {
-    if (user) {
+    if (user && currentWorkspace) {
       loadData();
     }
-  }, [user]);
+  }, [user, currentWorkspace]);
 
   const loadData = async () => {
+    if (!currentWorkspace) return;
+
     try {
       const now = new Date();
       const month = now.getMonth() + 1;
@@ -86,11 +90,13 @@ export default function FixedBills() {
             )
           `)
           .eq("user_id", user?.id)
+          .eq("workspace_id", currentWorkspace.id)
           .order("due_day", { ascending: true }),
         supabase
           .from("categories")
           .select("*")
           .eq("user_id", user?.id)
+          .eq("workspace_id", currentWorkspace.id)
           .eq("type", "expense"),
         supabase.rpc("calculate_monthly_bills_stats", {
           p_user_id: user?.id,
@@ -140,6 +146,7 @@ export default function FixedBills() {
     try {
       const billData = {
         user_id: user?.id,
+        workspace_id: currentWorkspace?.id,
         name: validationResult.data.name,
         description: validationResult.data.description || null,
         amount: validationResult.data.amount,
@@ -187,6 +194,7 @@ export default function FixedBills() {
         .insert([{
           bill_id: billId,
           user_id: user?.id,
+          workspace_id: currentWorkspace?.id,
           payment_date: now.toISOString().split("T")[0],
           amount_paid: amount,
         }]);

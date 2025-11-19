@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useWorkspace } from "@/hooks/useWorkspace";
 import { StatsCard } from "@/components/Dashboard/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Wallet, CreditCard, Target } from "lucide-react";
@@ -21,6 +22,7 @@ interface Transaction {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { currentWorkspace } = useWorkspace();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -30,12 +32,14 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    if (user) {
+    if (user && currentWorkspace) {
       loadTransactions();
     }
-  }, [user]);
+  }, [user, currentWorkspace]);
 
   const loadTransactions = async () => {
+    if (!currentWorkspace) return;
+
     try {
       const { data, error } = await supabase
         .from("transactions")
@@ -47,6 +51,7 @@ export default function Dashboard() {
           )
         `)
         .eq("user_id", user?.id)
+        .eq("workspace_id", currentWorkspace.id)
         .order("date", { ascending: false });
 
       if (error) throw error;

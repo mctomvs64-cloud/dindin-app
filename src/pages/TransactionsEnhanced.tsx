@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useWorkspace } from "@/hooks/useWorkspace";
 import { Button } from "@/components/ui/button";
 import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Upload, FileText } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -48,6 +49,7 @@ interface Project {
 
 export default function TransactionsEnhanced() {
   const { user } = useAuth();
+  const { currentWorkspace } = useWorkspace();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -76,12 +78,14 @@ export default function TransactionsEnhanced() {
   });
 
   useEffect(() => {
-    if (user) {
+    if (user && currentWorkspace) {
       loadData();
     }
-  }, [user]);
+  }, [user, currentWorkspace]);
 
   const loadData = async () => {
+    if (!currentWorkspace) return;
+
     try {
       const [transactionsRes, categoriesRes, projectsRes] = await Promise.all([
         supabase
@@ -97,15 +101,18 @@ export default function TransactionsEnhanced() {
             )
           `)
           .eq("user_id", user?.id)
+          .eq("workspace_id", currentWorkspace.id)
           .order("date", { ascending: false }),
         supabase
           .from("categories")
           .select("*")
-          .eq("user_id", user?.id),
+          .eq("user_id", user?.id)
+          .eq("workspace_id", currentWorkspace.id),
         supabase
           .from("projects")
           .select("id, name")
           .eq("user_id", user?.id)
+          .eq("workspace_id", currentWorkspace.id)
           .eq("status", "active")
       ]);
 
@@ -180,6 +187,7 @@ export default function TransactionsEnhanced() {
     try {
       const transactionData = {
         user_id: user?.id,
+        workspace_id: currentWorkspace?.id,
         type: validationResult.data.type,
         amount: validationResult.data.amount,
         description: validationResult.data.description,
