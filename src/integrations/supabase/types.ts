@@ -970,10 +970,6 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
-      update_updated_at_column: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
     }
     Enums: {
       bill_frequency: "monthly" | "yearly" | "custom"
