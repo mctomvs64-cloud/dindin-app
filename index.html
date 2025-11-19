@@ -12,6 +12,43 @@
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/8k0RA4lujZdklmTW2qgOByQUK7o2/social-images/social-1763491390812-Logo Clean e Moderno da Organiza Aí.png">
 
+    <!-- PWA: Manifest, theme color and Apple touch icon -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <meta name="theme-color" content="#6366F1">
+
+    <style>
+      /* PWA Install Button */
+      #pwa-install-btn {
+        position: fixed;
+        right: 20px;
+        bottom: 28px;
+        display: none;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 18px;
+        background: linear-gradient(180deg,#6d5bf4 0%,#5a44e8 100%);
+        color: #fff;
+        border: none;
+        border-radius: 14px;
+        box-shadow: 0 8px 20px rgba(99,102,241,0.25);
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        z-index: 10000;
+        transition: transform .18s ease, box-shadow .18s ease, opacity .18s ease;
+        backdrop-filter: blur(6px);
+      }
+      #pwa-install-btn:hover { transform: translateY(-4px); box-shadow: 0 14px 30px rgba(99,102,241,0.28); }
+      #pwa-install-btn:active { transform: translateY(-1px); }
+      #pwa-install-btn .pwa-icon {
+        width: 22px; height: 22px; display:inline-block;
+      }
+      @media (max-width:640px){
+        #pwa-install-btn { right: 14px; left: 14px; bottom: 18px; width: auto; justify-content:center; }
+      }
+    </style>
+
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@DinDinApp" />
     <meta name="twitter:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/8k0RA4lujZdklmTW2qgOByQUK7o2/social-images/social-1763491390812-Logo Clean e Moderno da Organiza Aí.png">
@@ -23,6 +60,76 @@
 
   <body>
     <div id="root"></div>
+    <!-- PWA Install Button (hidden until beforeinstallprompt fires) -->
+    <button id="pwa-install-btn" aria-hidden="true" title="Baixar o App Agora">
+      <svg class="pwa-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M12 3v10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M8 9l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="3" y="17" width="18" height="4" rx="1" fill="rgba(255,255,255,0.06)"/>
+      </svg>
+      <span>Baixar o App Agora</span>
+    </button>
+
+    <script type="module">
+      // Registro do service worker e gerenciamento do prompt de instalação PWA
+      (function(){
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('/sw.js')
+            .then((reg) => { console.log('SW registrado:', reg); })
+            .catch((err) => { console.warn('SW falhou:', err); });
+        }
+
+        // beforeinstallprompt flow
+        let deferredPrompt = null;
+        const installBtn = document.getElementById('pwa-install-btn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+          // Prevent the mini-infobar from appearing on mobile
+          e.preventDefault();
+          deferredPrompt = e;
+          // Show the install button
+          if (installBtn) {
+            installBtn.style.display = 'flex';
+            installBtn.setAttribute('aria-hidden', 'false');
+            installBtn.animate([
+              { transform: 'translateY(12px)', opacity: 0 },
+              { transform: 'translateY(0)', opacity: 1 }
+            ], { duration: 260, easing: 'ease-out' });
+          }
+        });
+
+        installBtn && installBtn.addEventListener('click', async () => {
+          if (!deferredPrompt) return;
+          installBtn.setAttribute('disabled', '');
+          try {
+            deferredPrompt.prompt();
+            const choiceResult = await deferredPrompt.userChoice;
+            if (choiceResult.outcome === 'accepted') {
+              console.log('Usuário aceitou a instalação');
+            } else {
+              console.log('Usuário rejeitou a instalação');
+            }
+          } catch (err) {
+            console.error('Erro ao solicitar instalação', err);
+          }
+          deferredPrompt = null;
+          if (installBtn) {
+            installBtn.style.display = 'none';
+            installBtn.setAttribute('aria-hidden', 'true');
+            installBtn.removeAttribute('disabled');
+          }
+        });
+
+        // Hide button once app installed
+        window.addEventListener('appinstalled', () => {
+          deferredPrompt = null;
+          if (installBtn) installBtn.style.display = 'none';
+          console.log('PWA instalada');
+        });
+      })();
+    </script>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
