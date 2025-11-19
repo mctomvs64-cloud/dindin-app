@@ -15,6 +15,11 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { fixedBillSchema } from "@/lib/validation";
+import { SkeletonLoader } from "@/components/SkeletonLoader";
+import { AnimatedCard } from "@/components/AnimatedCard";
+import { AnimatedButton } from "@/components/AnimatedButton";
+import { motion } from "framer-motion";
+import ReactConfetti from "react-confetti";
 
 interface FixedBill {
   id: string;
@@ -44,6 +49,21 @@ interface BillStats {
   completion_percentage: number;
 }
 
+const listVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 },
+};
+
 export default function FixedBills() {
   const { user } = useAuth();
   const { currentWorkspace } = useWorkspace();
@@ -53,6 +73,8 @@ export default function FixedBills() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBill, setEditingBill] = useState<FixedBill | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
+
 
   const [formData, setFormData] = useState({
     name: "",
@@ -172,7 +194,12 @@ export default function FixedBills() {
           .insert([billData]);
 
         if (error) throw error;
-        toast.success("Conta criada!");
+        toast.success("Conta criada!", {
+          icon: '🎉',
+          description: "Sua nova conta fixa foi adicionada com sucesso!",
+        });
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
       }
 
       setDialogOpen(false);
@@ -209,7 +236,12 @@ export default function FixedBills() {
 
       if (updateError) throw updateError;
 
-      toast.success("Conta marcada como paga!");
+      toast.success("Conta marcada como paga!", {
+        icon: '✅',
+        description: `R$ ${amount.toFixed(2)} pago com sucesso!`,
+      });
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
       loadData();
     } catch (error) {
       console.error("Erro ao marcar como paga:", error);
@@ -284,14 +316,23 @@ export default function FixedBills() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="space-y-8">
+        <SkeletonLoader className="h-10 w-1/3" />
+        <SkeletonLoader className="h-6 w-1/2" />
+        <div className="grid gap-4 md:grid-cols-4">
+          <SkeletonLoader className="h-28" count={4} />
+        </div>
+        <SkeletonLoader className="h-40" />
+        <div className="space-y-4">
+          <SkeletonLoader className="h-24" count={3} />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {showConfetti && <ReactConfetti recycle={false} numberOfPieces={200} gravity={0.1} />}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Contas Fixas</h1>
@@ -307,10 +348,10 @@ export default function FixedBills() {
           }}
         >
           <DialogTrigger asChild>
-            <Button className="hover-lift">
+            <AnimatedButton className="hover-lift">
               <Plus className="mr-2 h-4 w-4" />
               Nova Conta
-            </Button>
+            </AnimatedButton>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
@@ -456,10 +497,10 @@ export default function FixedBills() {
               </div>
 
               <div className="flex gap-2">
-                <Button type="submit" className="flex-1">
+                <AnimatedButton type="submit" className="flex-1">
                   {editingBill ? "Atualizar" : "Criar"}
-                </Button>
-                <Button
+                </AnimatedButton>
+                <AnimatedButton
                   type="button"
                   variant="outline"
                   onClick={() => {
@@ -468,7 +509,7 @@ export default function FixedBills() {
                   }}
                 >
                   Cancelar
-                </Button>
+                </AnimatedButton>
               </div>
             </form>
           </DialogContent>
@@ -477,7 +518,7 @@ export default function FixedBills() {
 
       {stats && (
         <div className="grid gap-4 md:grid-cols-4">
-          <Card className="hover-lift">
+          <AnimatedCard className="hover-lift">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -491,9 +532,9 @@ export default function FixedBills() {
                 </div>
               </div>
             </CardContent>
-          </Card>
+          </AnimatedCard>
 
-          <Card className="hover-lift">
+          <AnimatedCard className="hover-lift">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -507,9 +548,9 @@ export default function FixedBills() {
                 </div>
               </div>
             </CardContent>
-          </Card>
+          </AnimatedCard>
 
-          <Card className="hover-lift">
+          <AnimatedCard className="hover-lift">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -523,9 +564,9 @@ export default function FixedBills() {
                 </div>
               </div>
             </CardContent>
-          </Card>
+          </AnimatedCard>
 
-          <Card className="hover-lift">
+          <AnimatedCard className="hover-lift">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -539,12 +580,12 @@ export default function FixedBills() {
                 </div>
               </div>
             </CardContent>
-          </Card>
+          </AnimatedCard>
         </div>
       )}
 
       {stats && (
-        <Card className="hover-lift">
+        <AnimatedCard className="hover-lift">
           <CardHeader>
             <CardTitle>Progresso do Mês</CardTitle>
           </CardHeader>
@@ -559,40 +600,45 @@ export default function FixedBills() {
             </div>
             <Progress value={stats.completion_percentage} className="h-3" />
           </CardContent>
-        </Card>
+        </AnimatedCard>
       )}
 
       <div className="space-y-4">
         {bills.length === 0 ? (
-          <Card>
-            <CardContent className="text-center py-12">
-              <div className="flex justify-center mb-4">
-                <div className="bg-primary/10 rounded-full p-6">
-                  <Calendar className="h-12 w-12 text-primary" />
-                </div>
-              </div>
-              <h3 className="text-xl font-semibold mb-2">
-                Nenhuma conta fixa cadastrada
-              </h3>
-              <p className="text-muted-foreground max-w-md mx-auto mb-4">
-                Adicione suas contas mensais recorrentes para melhor controle
-                financeiro.
-              </p>
-              <Button onClick={() => setDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Adicionar Primeira Conta
-              </Button>
-            </CardContent>
-          </Card>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-center py-12"
+          >
+            <Calendar className="h-16 w-16 mx-auto mb-3 text-muted-foreground opacity-50" />
+            <h3 className="text-xl font-semibold mb-2 text-muted-foreground">
+              Nenhuma conta fixa cadastrada
+            </h3>
+            <p className="text-muted-foreground max-w-md mx-auto mb-4">
+              Adicione suas contas mensais recorrentes para melhor controle
+              financeiro.
+            </p>
+            <AnimatedButton onClick={() => setDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Adicionar Primeira Conta
+            </AnimatedButton>
+          </motion.div>
         ) : (
-          bills.map((bill) => (
-            <Card
-              key={bill.id}
-              className={`hover-lift transition-all ${
-                bill.status === "overdue" ? "border-danger" : ""
-              }`}
-            >
-              <CardContent className="p-6">
+          <motion.div
+            variants={listVariants}
+            initial="hidden"
+            animate="show"
+            className="space-y-4"
+          >
+            {bills.map((bill) => (
+              <motion.div
+                key={bill.id}
+                variants={itemVariants}
+                className={`hover-lift transition-all p-6 rounded-lg border ${
+                  bill.status === "overdue" ? "border-danger" : ""
+                }`}
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4 flex-1">
                     <div
@@ -641,35 +687,35 @@ export default function FixedBills() {
                     </div>
                     <div className="flex gap-2">
                       {bill.status !== "paid" && (
-                        <Button
+                        <AnimatedButton
                           variant="outline"
                           size="icon"
                           className="text-success hover:bg-success/10"
                           onClick={() => handleMarkAsPaid(bill.id, bill.amount)}
                         >
                           <CheckCircle2 className="h-4 w-4" />
-                        </Button>
+                        </AnimatedButton>
                       )}
-                      <Button
+                      <AnimatedButton
                         variant="ghost"
                         size="icon"
                         onClick={() => handleEdit(bill)}
                       >
                         <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
+                      </AnimatedButton>
+                      <AnimatedButton
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDelete(bill.id)}
                       >
                         <Trash2 className="h-4 w-4 text-danger" />
-                      </Button>
+                      </AnimatedButton>
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))
+              </motion.div>
+            ))}
+          </motion.div>
         )}
       </div>
     </div>

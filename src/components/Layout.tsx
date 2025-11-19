@@ -24,6 +24,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { FloatingActionButton } from "./FloatingActionButton";
+import { SkeletonLoader } from "./SkeletonLoader";
+import { motion } from "framer-motion";
 
 interface LayoutProps {
   children: ReactNode;
@@ -67,7 +70,7 @@ export default function Layout({ children }: LayoutProps) {
   if (authLoading || workspaceLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <SkeletonLoader className="h-12 w-12 rounded-full" />
       </div>
     );
   }
@@ -113,8 +116,13 @@ export default function Layout({ children }: LayoutProps) {
   // If user is logged in but no workspace is found (e.g., first login or all deleted)
   if (!currentWorkspace && user) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center bg-background">
-        <Wallet className="h-24 w-24 text-primary mb-6 opacity-70" />
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="min-h-screen flex flex-col items-center justify-center p-4 text-center bg-background"
+      >
+        <Wallet className="h-24 w-24 text-primary mb-6 opacity-70 animate-bounce-subtle" />
         <h2 className="text-2xl font-bold mb-3">Bem-vindo ao FinanceFlow!</h2>
         <p className="text-muted-foreground mb-6 max-w-md">
           Parece que você ainda não tem um perfil financeiro. Crie um para começar a organizar suas finanças.
@@ -180,7 +188,7 @@ export default function Layout({ children }: LayoutProps) {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
+      </motion.div>
     );
   }
 
@@ -283,6 +291,7 @@ export default function Layout({ children }: LayoutProps) {
       </div>
       
       <BottomNav />
+      <FloatingActionButton onClick={() => navigate("/transactions")} /> {/* Example FAB, can be customized */}
     </div>
   );
 }

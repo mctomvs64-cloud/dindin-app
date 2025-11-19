@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { motion } from "framer-motion";
+import { toast } from "sonner";
 
 const WORKSPACE_COLORS = [
   "#6366F1", "#10B981", "#EF4444", "#F59E0B", "#8B5CF6", 
@@ -36,7 +38,10 @@ export function WorkspaceSelector() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) return;
+    if (!formData.name.trim()) {
+      toast.error("O nome do perfil é obrigatório.");
+      return;
+    }
 
     await createWorkspace(formData);
     setFormData({
@@ -54,13 +59,19 @@ export function WorkspaceSelector() {
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="flex items-center gap-2 w-full px-3 py-2 rounded-lg hover:bg-accent/50 transition-colors">
-            <div
+          <motion.button
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg hover:bg-accent/50 transition-colors"
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          >
+            <motion.div
               className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-semibold text-sm"
               style={{ backgroundColor: currentWorkspace.color }}
+              animate={{ backgroundColor: currentWorkspace.color }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
             >
               {currentWorkspace.name.charAt(0).toUpperCase()}
-            </div>
+            </motion.div>
             <div className="flex-1 text-left min-w-0">
               <p className="font-medium text-sm truncate">{currentWorkspace.name}</p>
               <p className="text-xs text-muted-foreground truncate">
@@ -68,7 +79,7 @@ export function WorkspaceSelector() {
               </p>
             </div>
             <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-          </button>
+          </motion.button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-64">
           {workspaces.map((workspace) => (

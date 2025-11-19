@@ -9,8 +9,26 @@ import { TrendingUp, TrendingDown, DollarSign, BarChart3, PieChart, Calendar } f
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPie, Pie, Cell, Legend, LineChart, Line } from "recharts";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { SkeletonLoader } from "@/components/SkeletonLoader";
+import { AnimatedCard } from "@/components/AnimatedCard";
+import { motion } from "framer-motion";
 
 const COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#06b6d4", "#ef4444"];
+
+const listVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 },
+};
 
 export default function Reports() {
   const { user } = useAuth();
@@ -81,6 +99,7 @@ export default function Reports() {
       processReportData(data || []);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
+      toast.error("Erro ao carregar dados do relatório.");
     } finally {
       setLoading(false);
     }
@@ -140,8 +159,14 @@ export default function Reports() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="space-y-8">
+        <SkeletonLoader className="h-10 w-1/3" />
+        <SkeletonLoader className="h-6 w-1/2" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <SkeletonLoader className="h-28" count={4} />
+        </div>
+        <SkeletonLoader className="h-96" />
+        <SkeletonLoader className="h-96" />
       </div>
     );
   }
@@ -167,7 +192,7 @@ export default function Reports() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+        <AnimatedCard>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total de Entradas</CardTitle>
             <TrendingUp className="h-4 w-4 text-green-600" />
@@ -180,9 +205,9 @@ export default function Reports() {
               Média: {formatCurrency(stats.avgIncome)}
             </p>
           </CardContent>
-        </Card>
+        </AnimatedCard>
 
-        <Card>
+        <AnimatedCard>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total de Saídas</CardTitle>
             <TrendingDown className="h-4 w-4 text-red-600" />
@@ -195,9 +220,9 @@ export default function Reports() {
               Média: {formatCurrency(stats.avgExpense)}
             </p>
           </CardContent>
-        </Card>
+        </AnimatedCard>
 
-        <Card>
+        <AnimatedCard>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Saldo do Período</CardTitle>
             <DollarSign className="h-4 w-4 text-primary" />
@@ -210,9 +235,9 @@ export default function Reports() {
               {stats.balance >= 0 ? "Positivo" : "Negativo"}
             </p>
           </CardContent>
-        </Card>
+        </AnimatedCard>
 
-        <Card>
+        <AnimatedCard>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Transações</CardTitle>
             <BarChart3 className="h-4 w-4 text-primary" />
@@ -223,7 +248,7 @@ export default function Reports() {
               No período selecionado
             </p>
           </CardContent>
-        </Card>
+        </AnimatedCard>
       </div>
 
       <Tabs defaultValue="monthly" className="space-y-4">
@@ -239,7 +264,7 @@ export default function Reports() {
         </TabsList>
 
         <TabsContent value="monthly" className="space-y-4">
-          <Card>
+          <AnimatedCard>
             <CardHeader>
               <CardTitle>Evolução Mensal</CardTitle>
             </CardHeader>
@@ -258,14 +283,14 @@ export default function Reports() {
                     }}
                   />
                   <Legend />
-                  <Bar dataKey="income" name="Entradas" fill="#10b981" />
-                  <Bar dataKey="expense" name="Saídas" fill="#ef4444" />
+                  <Bar dataKey="income" name="Entradas" fill="#10b981" isAnimationActive={true} animationDuration={800} />
+                  <Bar dataKey="expense" name="Saídas" fill="#ef4444" isAnimationActive={true} animationDuration={800} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
-          </Card>
+          </AnimatedCard>
 
-          <Card>
+          <AnimatedCard>
             <CardHeader>
               <CardTitle>Tendência de Saldo</CardTitle>
             </CardHeader>
@@ -290,16 +315,18 @@ export default function Reports() {
                     name="Saldo"
                     stroke="#6366f1"
                     strokeWidth={2}
+                    isAnimationActive={true}
+                    animationDuration={800}
                   />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
-          </Card>
+          </AnimatedCard>
         </TabsContent>
 
         <TabsContent value="categories">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
+            <AnimatedCard>
               <CardHeader>
                 <CardTitle>Distribuição por Categoria</CardTitle>
               </CardHeader>
@@ -315,6 +342,8 @@ export default function Reports() {
                       outerRadius={120}
                       fill="#8884d8"
                       dataKey="value"
+                      isAnimationActive={true}
+                      animationDuration={800}
                     >
                       {categoryData.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -324,19 +353,24 @@ export default function Reports() {
                   </RechartsPie>
                 </ResponsiveContainer>
               </CardContent>
-            </Card>
+            </AnimatedCard>
 
-            <Card>
+            <AnimatedCard>
               <CardHeader>
                 <CardTitle>Top Categorias</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
+                <motion.div
+                  variants={listVariants}
+                  initial="hidden"
+                  animate="show"
+                  className="space-y-4"
+                >
                   {categoryData
                     .sort((a, b) => b.value - a.value)
                     .slice(0, 5)
                     .map((cat, index) => (
-                      <div key={cat.name} className="flex items-center gap-3">
+                      <motion.div key={cat.name} variants={itemVariants} className="flex items-center gap-3">
                         <div
                           className="w-3 h-3 rounded-full"
                           style={{ backgroundColor: COLORS[index % COLORS.length] }}
@@ -349,20 +383,22 @@ export default function Reports() {
                             </span>
                           </div>
                           <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                            <div
-                              className="h-full transition-all"
+                            <motion.div
+                              className="h-full"
+                              initial={{ width: 0 }}
+                              animate={{ width: `${(cat.value / stats.totalExpense) * 100}%` }}
+                              transition={{ duration: 0.8, ease: "easeOut" }}
                               style={{
-                                width: `${(cat.value / stats.totalExpense) * 100}%`,
                                 backgroundColor: COLORS[index % COLORS.length],
                               }}
                             />
                           </div>
                         </div>
-                      </div>
+                      </motion.div>
                     ))}
-                </div>
+                </motion.div>
               </CardContent>
-            </Card>
+            </AnimatedCard>
           </div>
         </TabsContent>
       </Tabs>

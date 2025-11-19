@@ -8,8 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Tag } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { AnimatedCard } from "@/components/AnimatedCard";
+import { AnimatedButton } from "@/components/AnimatedButton";
+import { motion } from "framer-motion";
+import ReactConfetti from "react-confetti";
 
 interface Category {
   id: string;
@@ -19,6 +23,21 @@ interface Category {
   type: "income" | "expense";
   workspace_id: string; // Adicionado workspace_id à interface
 }
+
+const listVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 },
+};
 
 export function CategoryManager() {
   const { user } = useAuth();
@@ -32,6 +51,8 @@ export function CategoryManager() {
     color: "#6366f1",
     type: "expense" as "income" | "expense",
   });
+  const [showConfetti, setShowConfetti] = useState(false);
+
 
   useEffect(() => {
     if (user && currentWorkspace) { // Garante que currentWorkspace esteja disponível
@@ -87,14 +108,22 @@ export function CategoryManager() {
           .eq("id", editingCategory.id);
 
         if (error) throw error;
-        toast.success("Categoria atualizada!");
+        toast.success("Categoria atualizada!", {
+          icon: '✏️',
+          description: "As informações da categoria foram salvas.",
+        });
       } else {
         const { error } = await supabase
           .from("categories")
           .insert([categoryData]);
 
         if (error) throw error;
-        toast.success("Categoria criada!");
+        toast.success("Categoria criada!", {
+          icon: '🏷️',
+          description: "Sua nova categoria foi adicionada com sucesso!",
+        });
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
       }
 
       setDialogOpen(false);
@@ -125,7 +154,10 @@ export function CategoryManager() {
         .eq("workspace_id", currentWorkspace.id); // Garante que a exclusão seja restrita ao workspace
 
       if (error) throw error;
-      toast.success("Categoria excluída!");
+      toast.success("Categoria excluída!", {
+        icon: '🗑️',
+        description: "A categoria foi removida.",
+      });
       loadCategories();
     } catch (error) {
       console.error("Erro ao excluir categoria:", error);
@@ -159,6 +191,7 @@ export function CategoryManager() {
 
   return (
     <div className="space-y-6">
+      {showConfetti && <ReactConfetti recycle={false} numberOfPieces={200} gravity={0.1} />}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Gerenciar Categorias</h2>
@@ -174,10 +207,10 @@ export function CategoryManager() {
           }}
         >
           <DialogTrigger asChild>
-            <Button>
+            <AnimatedButton>
               <Plus className="mr-2 h-4 w-4" />
               Nova Categoria
-            </Button>
+            </AnimatedButton>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -241,10 +274,10 @@ export function CategoryManager() {
               </div>
 
               <div className="flex gap-2">
-                <Button type="submit" className="flex-1">
+                <AnimatedButton type="submit" className="flex-1">
                   {editingCategory ? "Atualizar" : "Criar"}
-                </Button>
-                <Button
+                </AnimatedButton>
+                <AnimatedButton
                   type="button"
                   variant="outline"
                   onClick={() => {
@@ -253,7 +286,7 @@ export function CategoryManager() {
                   }}
                 >
                   Cancelar
-                </Button>
+                </AnimatedButton>
               </div>
             </form>
           </DialogContent>
@@ -261,15 +294,21 @@ export function CategoryManager() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card>
+        <AnimatedCard>
           <CardContent className="pt-6">
             <h3 className="text-lg font-semibold mb-4 text-success">
               Categorias de Entrada
             </h3>
-            <div className="space-y-2">
+            <motion.div
+              variants={listVariants}
+              initial="hidden"
+              animate="show"
+              className="space-y-2"
+            >
               {incomeCategories.map((category) => (
-                <div
+                <motion.div
                   key={category.id}
+                  variants={itemVariants}
                   className="flex items-center justify-between p-3 rounded-lg bg-accent/50 hover:bg-accent transition-colors"
                 >
                   <div className="flex items-center gap-3">
@@ -280,41 +319,52 @@ export function CategoryManager() {
                     <span className="font-medium">{category.name}</span>
                   </div>
                   <div className="flex gap-1">
-                    <Button
+                    <AnimatedButton
                       variant="ghost"
                       size="icon"
                       onClick={() => handleEdit(category)}
                     >
                       <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
+                    </AnimatedButton>
+                    <AnimatedButton
                       variant="ghost"
                       size="icon"
                       onClick={() => handleDelete(category.id)}
                     >
                       <Trash2 className="h-4 w-4 text-danger" />
-                    </Button>
+                    </AnimatedButton>
                   </div>
-                </div>
+                </motion.div>
               ))}
               {incomeCategories.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">
+                <motion.p
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="text-sm text-muted-foreground text-center py-4"
+                >
                   Nenhuma categoria de entrada
-                </p>
+                </motion.p>
               )}
-            </div>
+            </motion.div>
           </CardContent>
-        </Card>
+        </AnimatedCard>
 
-        <Card>
+        <AnimatedCard>
           <CardContent className="pt-6">
             <h3 className="text-lg font-semibold mb-4 text-danger">
               Categorias de Saída
             </h3>
-            <div className="space-y-2">
+            <motion.div
+              variants={listVariants}
+              initial="hidden"
+              animate="show"
+              className="space-y-2"
+            >
               {expenseCategories.map((category) => (
-                <div
+                <motion.div
                   key={category.id}
+                  variants={itemVariants}
                   className="flex items-center justify-between p-3 rounded-lg bg-accent/50 hover:bg-accent transition-colors"
                 >
                   <div className="flex items-center gap-3">
@@ -325,31 +375,36 @@ export function CategoryManager() {
                     <span className="font-medium">{category.name}</span>
                   </div>
                   <div className="flex gap-1">
-                    <Button
+                    <AnimatedButton
                       variant="ghost"
                       size="icon"
                       onClick={() => handleEdit(category)}
                     >
                       <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
+                    </AnimatedButton>
+                    <AnimatedButton
                       variant="ghost"
                       size="icon"
                       onClick={() => handleDelete(category.id)}
                     >
                       <Trash2 className="h-4 w-4 text-danger" />
-                    </Button>
+                    </AnimatedButton>
                   </div>
-                </div>
+                </motion.div>
               ))}
               {expenseCategories.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">
+                <motion.p
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="text-sm text-muted-foreground text-center py-4"
+                >
                   Nenhuma categoria de saída
-                </p>
+                </motion.p>
               )}
-            </div>
+            </motion.div>
           </CardContent>
-        </Card>
+        </AnimatedCard>
       </div>
     </div>
   );

@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Wallet, ArrowRight } from "lucide-react";
+import { AnimatedButton } from "@/components/AnimatedButton";
+import { motion } from "framer-motion";
 
 export default function Auth() {
   const [email, setEmail] = useState("");
@@ -62,14 +64,24 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent p-4">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent p-4"
+    >
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-2">
-          <div className="flex justify-center mb-4">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.5, type: "spring", stiffness: 100 }}
+            className="flex justify-center mb-4"
+          >
             <div className="bg-primary rounded-2xl p-4">
               <Wallet className="h-10 w-10 text-primary-foreground" />
             </div>
-          </div>
+          </motion.div>
           <h1 className="text-3xl font-bold tracking-tight">FinanceFlow</h1>
           <p className="text-muted-foreground">
             Controle total das suas finanças
@@ -116,14 +128,14 @@ export default function Auth() {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button 
+                  <AnimatedButton 
                     type="submit" 
                     className="w-full" 
                     disabled={isLoading}
                   >
                     {isLoading ? "Entrando..." : "Entrar"}
                     <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
+                  </AnimatedButton>
                 </CardFooter>
               </form>
             </Card>
@@ -175,20 +187,20 @@ export default function Auth() {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button 
+                  <AnimatedButton 
                     type="submit" 
                     className="w-full" 
                     disabled={isLoading}
                   >
                     {isLoading ? "Criando conta..." : "Criar conta"}
                     <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
+                  </AnimatedButton>
                 </CardFooter>
               </form>
             </Card>
           </TabsContent>
         </Tabs>
       </div>
-    </div>
+    </motion.div>
   );
 }

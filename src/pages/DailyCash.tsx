@@ -11,9 +11,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { DollarSign, CreditCard, Smartphone, Trash2, Receipt, Lock } from "lucide-react";
+import { DollarSign, CreditCard, Smartphone, Trash2, Receipt, Lock, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { SkeletonLoader } from "@/components/SkeletonLoader";
+import { AnimatedCard } from "@/components/AnimatedCard";
+import { AnimatedButton } from "@/components/AnimatedButton";
+import { motion, AnimatePresence } from "framer-motion";
+import { useInView } from "framer-motion";
+import { useRef } from "react";
+import ReactConfetti from "react-confetti";
 
 interface CashEntry {
   id: string;
@@ -33,6 +40,50 @@ const PAYMENT_METHODS = [
   { value: "pix", label: "PIX", icon: Smartphone },
 ];
 
+const listVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 },
+};
+
+const AnimatedCounter = ({ from, to }: { from: number; to: number }) => {
+  const [count, setCount] = useState(from);
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true });
+
+  useEffect(() => {
+    if (!isInView) return;
+
+    let start: number | null = null;
+    const duration = 600; // milliseconds
+
+    const animateCount = (timestamp: number) => {
+      if (!start) start = timestamp;
+      const progress = (timestamp - start) / duration;
+
+      if (progress < 1) {
+        setCount(from + (to - from) * progress);
+        requestAnimationFrame(animateCount);
+      } else {
+        setCount(to);
+      }
+    };
+
+    requestAnimationFrame(animateCount);
+  }, [from, to, isInView]);
+
+  return <span ref={ref}>{count.toFixed(2)}</span>;
+};
+
 export default function DailyCash() {
   const { user } = useAuth();
   const { currentWorkspace } = useWorkspace();
@@ -44,6 +95,8 @@ export default function DailyCash() {
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [showConfetti, setShowConfetti] = useState(false);
+
 
   const today = format(new Date(), "yyyy-MM-dd");
 
@@ -101,7 +154,12 @@ export default function DailyCash() {
       }]);
 
       if (error) throw error;
-      toast.success(`R$ ${amount} adicionado!`);
+      toast.success(`R$ ${amount.toFixed(2)} adicionado!`, {
+        icon: '⚡',
+        description: "Entrada rápida registrada com sucesso!",
+      });
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
       loadData();
     } catch (error) {
       console.error("Erro:", error);
@@ -125,7 +183,12 @@ export default function DailyCash() {
       }]);
 
       if (error) throw error;
-      toast.success("Entrada adicionada!");
+      toast.success("Entrada adicionada!", {
+        icon: '💰',
+        description: "Sua entrada foi registrada com sucesso!",
+      });
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
       setIsDialogOpen(false);
       setCustomAmount("");
       setDescription("");
@@ -185,7 +248,12 @@ export default function DailyCash() {
       }]);
 
       if (error) throw error;
-      toast.success("Caixa fechado com sucesso!");
+      toast.success("Caixa fechado com sucesso!", {
+        icon: '🔒',
+        description: `Total do dia: R$ ${(totalCash + totalCard + totalPix).toFixed(2)}`,
+      });
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
       loadData();
     } catch (error) {
       console.error("Erro:", error);
@@ -205,14 +273,23 @@ export default function DailyCash() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="space-y-8">
+        <SkeletonLoader className="h-10 w-1/3" />
+        <SkeletonLoader className="h-6 w-1/2" />
+        <SkeletonLoader className="h-40" />
+        <div className="grid gap-4 md:grid-cols-5">
+          <SkeletonLoader className="h-20" count={5} />
+        </div>
+        <div className="space-y-4">
+          <SkeletonLoader className="h-24" count={3} />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6 pb-20 lg:pb-8">
+      {showConfetti && <ReactConfetti recycle={false} numberOfPieces={200} gravity={0.1} />}
       {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -222,11 +299,11 @@ export default function DailyCash() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="lg" onClick={() => setIsDialogOpen(true)}>
+          <AnimatedButton variant="outline" size="lg" onClick={() => setIsDialogOpen(true)}>
             <Receipt className="h-4 w-4 mr-2" />
             Adicionar Entrada
-          </Button>
-          <Button 
+          </AnimatedButton>
+          <AnimatedButton 
             size="lg" 
             onClick={closeCash}
             disabled={entries.length === 0}
@@ -234,52 +311,52 @@ export default function DailyCash() {
           >
             <Lock className="h-4 w-4 mr-2" />
             Fechar Caixa
-          </Button>
+          </AnimatedButton>
         </div>
       </div>
 
       {/* Valor Total Gigante */}
-      <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-background border-primary/20">
+      <AnimatedCard className="bg-gradient-to-br from-primary/10 via-primary/5 to-background border-primary/20">
         <CardContent className="p-8">
           <div className="text-center space-y-2">
             <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
               Total do Dia
             </p>
             <p className="text-6xl font-bold bg-gradient-to-br from-primary to-primary/60 bg-clip-text text-transparent">
-              R$ {totalDay.toFixed(2)}
+              R$ <AnimatedCounter from={0} to={totalDay} />
             </p>
             <div className="flex justify-center gap-6 pt-4">
               <div className="text-center">
                 <DollarSign className="h-5 w-5 mx-auto text-green-600 mb-1" />
                 <p className="text-xs text-muted-foreground">Dinheiro</p>
-                <p className="text-lg font-semibold">R$ {totalCash.toFixed(2)}</p>
+                <p className="text-lg font-semibold">R$ <AnimatedCounter from={0} to={totalCash} /></p>
               </div>
               <Separator orientation="vertical" className="h-16" />
               <div className="text-center">
                 <CreditCard className="h-5 w-5 mx-auto text-blue-600 mb-1" />
                 <p className="text-xs text-muted-foreground">Cartão</p>
-                <p className="text-lg font-semibold">R$ {totalCard.toFixed(2)}</p>
+                <p className="text-lg font-semibold">R$ <AnimatedCounter from={0} to={totalCard} /></p>
               </div>
               <Separator orientation="vertical" className="h-16" />
               <div className="text-center">
                 <Smartphone className="h-5 w-5 mx-auto text-purple-600 mb-1" />
                 <p className="text-xs text-muted-foreground">PIX</p>
-                <p className="text-lg font-semibold">R$ {totalPix.toFixed(2)}</p>
+                <p className="text-lg font-semibold">R$ <AnimatedCounter from={0} to={totalPix} /></p>
               </div>
             </div>
           </div>
         </CardContent>
-      </Card>
+      </AnimatedCard>
 
       {/* Botões Rápidos */}
-      <Card>
+      <AnimatedCard>
         <CardHeader>
           <CardTitle className="text-lg">Valores Rápidos</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {QUICK_VALUES.map((value) => (
-              <Button
+              <AnimatedButton
                 key={value}
                 onClick={() => addQuickEntry(value)}
                 size="lg"
@@ -287,14 +364,14 @@ export default function DailyCash() {
                 className="h-20 text-xl font-bold hover:bg-primary hover:text-primary-foreground transition-all"
               >
                 + R$ {value}
-              </Button>
+              </AnimatedButton>
             ))}
           </div>
         </CardContent>
-      </Card>
+      </AnimatedCard>
 
       {/* Lista de Entradas */}
-      <Card>
+      <AnimatedCard>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Entradas do Dia</span>
@@ -305,18 +382,29 @@ export default function DailyCash() {
         </CardHeader>
         <CardContent>
           {entries.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Receipt className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>Nenhuma entrada registrada hoje</p>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="text-center py-12 text-muted-foreground"
+            >
+              <Receipt className="h-16 w-16 mx-auto mb-3 opacity-50" />
+              <p className="text-lg font-semibold">Nenhuma entrada registrada hoje</p>
               <p className="text-sm">Adicione valores usando os botões rápidos acima</p>
-            </div>
+            </motion.div>
           ) : (
-            <div className="space-y-3">
+            <motion.div
+              variants={listVariants}
+              initial="hidden"
+              animate="show"
+              className="space-y-3"
+            >
               {entries.map((entry) => {
                 const Icon = getPaymentIcon(entry.payment_method);
                 return (
-                  <div
+                  <motion.div
                     key={entry.id}
+                    variants={itemVariants}
                     className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent/50 transition-colors"
                   >
                     <div className="flex items-center gap-4 flex-1">
@@ -352,21 +440,21 @@ export default function DailyCash() {
                         </p>
                       </div>
                     </div>
-                    <Button
+                    <AnimatedButton
                       variant="ghost"
                       size="icon"
                       onClick={() => deleteEntry(entry.id)}
                       className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     >
                       <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                    </AnimatedButton>
+                  </motion.div>
                 );
               })}
-            </div>
+            </motion.div>
           )}
         </CardContent>
-      </Card>
+      </AnimatedCard>
 
       {/* Dialog Entrada Customizada */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -431,17 +519,17 @@ export default function DailyCash() {
             </div>
 
             <div className="flex gap-2 pt-4">
-              <Button
+              <AnimatedButton
                 type="button"
                 variant="outline"
                 onClick={() => setIsDialogOpen(false)}
                 className="flex-1"
               >
                 Cancelar
-              </Button>
-              <Button type="submit" className="flex-1">
+              </AnimatedButton>
+              <AnimatedButton type="submit" className="flex-1">
                 Adicionar
-              </Button>
+              </AnimatedButton>
             </div>
           </form>
         </DialogContent>

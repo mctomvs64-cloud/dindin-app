@@ -1,5 +1,6 @@
 import { LucideIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { AnimatedCard } from "@/components/AnimatedCard";
 
 interface StatsCardProps {
   title: string;
@@ -26,7 +27,7 @@ export function StatsCard({ title, value, icon: Icon, trend, variant = "default"
   };
 
   return (
-    <Card className={`${variantClasses[variant]} transition-all hover:shadow-md`}>
+    <AnimatedCard className={`${variantClasses[variant]} transition-all hover:shadow-md`}>
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="space-y-2 flex-1">
@@ -43,6 +44,6 @@ export function StatsCard({ title, value, icon: Icon, trend, variant = "default"
           </div>
         </div>
       </CardContent>
-    </Card>
+    </AnimatedCard>
   );
 }

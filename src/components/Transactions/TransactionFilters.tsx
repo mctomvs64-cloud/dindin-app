@@ -3,6 +3,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Search, X } from "lucide-react";
+import { AnimatedCard } from "@/components/AnimatedCard";
+import { AnimatedButton } from "@/components/AnimatedButton";
 
 interface TransactionFiltersProps {
   searchTerm: string;
@@ -46,14 +48,14 @@ export function TransactionFilters({
     endDate;
 
   return (
-    <div className="bg-card rounded-lg border p-4 space-y-4">
+    <AnimatedCard className="bg-card rounded-lg border p-4 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold">Filtros</h3>
         {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={onReset}>
+          <AnimatedButton variant="ghost" size="sm" onClick={onReset}>
             <X className="h-4 w-4 mr-2" />
             Limpar filtros
-          </Button>
+          </AnimatedButton>
         )}
       </div>
 
@@ -144,6 +146,6 @@ export function TransactionFilters({
           </div>
         </div>
       )}
-    </div>
+    </AnimatedCard>
   );
 }

@@ -4,8 +4,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { StatsCard } from "@/components/Dashboard/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, TrendingDown, Wallet, CreditCard, Target } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { TrendingUp, TrendingDown, Wallet, CreditCard, Target, Receipt, BarChart3, PieChart } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPie, Pie, Cell, Legend } from "recharts";
+import { SkeletonLoader } from "@/components/SkeletonLoader";
+import { AnimatedCard } from "@/components/AnimatedCard";
+import { motion } from "framer-motion";
 
 interface Transaction {
   id: string;
@@ -19,6 +22,21 @@ interface Transaction {
     color: string;
   };
 }
+
+const listVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 },
+};
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -60,6 +78,7 @@ export default function Dashboard() {
       calculateStats(data || []);
     } catch (error) {
       console.error("Erro ao carregar transações:", error);
+      toast.error("Erro ao carregar transações do dashboard.");
     } finally {
       setLoading(false);
     }
@@ -127,8 +146,19 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="space-y-8">
+        <SkeletonLoader className="h-10 w-1/3" />
+        <SkeletonLoader className="h-6 w-1/2" />
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <SkeletonLoader className="h-32" />
+          <SkeletonLoader className="h-32" />
+          <SkeletonLoader className="h-32" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <SkeletonLoader className="h-80" />
+          <SkeletonLoader className="h-80" />
+        </div>
+        <SkeletonLoader className="h-80" />
       </div>
     );
   }
@@ -167,7 +197,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
+        <AnimatedCard>
           <CardHeader>
             <CardTitle>Entradas vs Saídas</CardTitle>
           </CardHeader>
@@ -179,20 +209,20 @@ export default function Dashboard() {
                 <YAxis />
                 <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                 <Legend />
-                <Bar dataKey="income" fill="hsl(var(--success))" name="Entradas" />
-                <Bar dataKey="expense" fill="hsl(var(--danger))" name="Saídas" />
+                <Bar dataKey="income" fill="hsl(var(--success))" name="Entradas" isAnimationActive={true} animationDuration={800} />
+                <Bar dataKey="expense" fill="hsl(var(--danger))" name="Saídas" isAnimationActive={true} animationDuration={800} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
-        </Card>
+        </AnimatedCard>
 
-        <Card>
+        <AnimatedCard>
           <CardHeader>
             <CardTitle>Gastos por Categoria</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
+              <RechartsPie>
                 <Pie
                   data={categoryData}
                   cx="50%"
@@ -202,33 +232,47 @@ export default function Dashboard() {
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
+                  isAnimationActive={true}
+                  animationDuration={800}
                 >
                   {categoryData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
                 <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-              </PieChart>
+              </RechartsPie>
             </ResponsiveContainer>
           </CardContent>
-        </Card>
+        </AnimatedCard>
       </div>
 
-      <Card>
+      <AnimatedCard>
         <CardHeader>
           <CardTitle>Transações Recentes</CardTitle>
         </CardHeader>
         <CardContent>
           {transactions.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <p>Nenhuma transação encontrada.</p>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="text-center py-12 text-muted-foreground"
+            >
+              <Receipt className="h-16 w-16 mx-auto mb-3 opacity-50" />
+              <p className="text-lg font-semibold">Nenhuma transação encontrada.</p>
               <p className="text-sm mt-2">Adicione sua primeira transação para começar!</p>
-            </div>
+            </motion.div>
           ) : (
-            <div className="space-y-4">
+            <motion.div
+              variants={listVariants}
+              initial="hidden"
+              animate="show"
+              className="space-y-4"
+            >
               {transactions.slice(0, 5).map((transaction) => (
-                <div
+                <motion.div
                   key={transaction.id}
+                  variants={itemVariants}
                   className="flex items-center justify-between p-4 rounded-lg bg-accent/50 hover:bg-accent transition-colors"
                 >
                   <div className="flex items-center gap-4">
@@ -261,12 +305,12 @@ export default function Dashboard() {
                     {transaction.type === "income" ? "+" : "-"}
                     {formatCurrency(Number(transaction.amount))}
                   </p>
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           )}
         </CardContent>
-      </Card>
+      </AnimatedCard>
     </div>
   );
 }

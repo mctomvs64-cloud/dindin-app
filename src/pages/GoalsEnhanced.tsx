@@ -14,6 +14,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { goalSchema } from "@/lib/validation";
+import { SkeletonLoader } from "@/components/SkeletonLoader";
+import { AnimatedCard } from "@/components/AnimatedCard";
+import { AnimatedButton } from "@/components/AnimatedButton";
+import { motion } from "framer-motion";
+import ReactConfetti from "react-confetti";
 
 interface Goal {
   id: string;
@@ -36,6 +41,21 @@ interface Goal {
   };
 }
 
+const listVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 },
+};
+
 export default function GoalsEnhanced() {
   const { user } = useAuth();
   const { currentWorkspace } = useWorkspace();
@@ -45,6 +65,8 @@ export default function GoalsEnhanced() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
+
 
   const [formData, setFormData] = useState({
     name: "",
@@ -164,7 +186,12 @@ export default function GoalsEnhanced() {
           .insert([goalData]);
 
         if (error) throw error;
-        toast.success("Meta criada!");
+        toast.success("Meta criada!", {
+          icon: '🎯',
+          description: "Sua nova meta foi adicionada com sucesso!",
+        });
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
       }
 
       setDialogOpen(false);
@@ -264,14 +291,20 @@ export default function GoalsEnhanced() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="space-y-8">
+        <SkeletonLoader className="h-10 w-1/3" />
+        <SkeletonLoader className="h-6 w-1/2" />
+        <SkeletonLoader className="h-40" />
+        <div className="space-y-4">
+          <SkeletonLoader className="h-24" count={3} />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {showConfetti && <ReactConfetti recycle={false} numberOfPieces={200} gravity={0.1} />}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Metas Financeiras</h1>
@@ -287,10 +320,10 @@ export default function GoalsEnhanced() {
           }}
         >
           <DialogTrigger asChild>
-            <Button className="hover-lift">
+            <AnimatedButton className="hover-lift">
               <Plus className="mr-2 h-4 w-4" />
               Nova Meta
-            </Button>
+            </AnimatedButton>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -450,10 +483,10 @@ export default function GoalsEnhanced() {
               </div>
 
               <div className="flex gap-2">
-                <Button type="submit" className="flex-1">
+                <AnimatedButton type="submit" className="flex-1">
                   {editingGoal ? "Atualizar" : "Criar"}
-                </Button>
-                <Button
+                </AnimatedButton>
+                <AnimatedButton
                   type="button"
                   variant="outline"
                   onClick={() => {
@@ -462,7 +495,7 @@ export default function GoalsEnhanced() {
                   }}
                 >
                   Cancelar
-                </Button>
+                </AnimatedButton>
               </div>
             </form>
           </DialogContent>
@@ -470,29 +503,33 @@ export default function GoalsEnhanced() {
       </div>
 
       {activeGoals.length === 0 && completedGoals.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-12">
-            <div className="flex justify-center mb-4">
-              <div className="bg-primary/10 rounded-full p-6">
-                <Target className="h-12 w-12 text-primary" />
-              </div>
-            </div>
-            <h3 className="text-xl font-semibold mb-2">Nenhuma meta ainda</h3>
-            <p className="text-muted-foreground max-w-md mx-auto mb-4">
-              Defina suas metas financeiras e acompanhe o progresso de cada uma.
-            </p>
-            <Button onClick={() => setDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Criar Primeira Meta
-            </Button>
-          </CardContent>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center py-12"
+        >
+          <Target className="h-16 w-16 mx-auto mb-3 text-muted-foreground opacity-50" />
+          <h3 className="text-xl font-semibold mb-2 text-muted-foreground">Nenhuma meta ainda</h3>
+          <p className="text-muted-foreground max-w-md mx-auto mb-4">
+            Defina suas metas financeiras e acompanhe o progresso de cada uma.
+          </p>
+          <AnimatedButton onClick={() => setDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Criar Primeira Meta
+          </AnimatedButton>
+        </motion.div>
       ) : (
         <>
           {activeGoals.length > 0 && (
             <div className="space-y-4">
               <h2 className="text-xl font-bold">Metas Ativas</h2>
-              <div className="grid gap-4 md:grid-cols-2">
+              <motion.div
+                variants={listVariants}
+                initial="hidden"
+                animate="show"
+                className="grid gap-4 md:grid-cols-2"
+              >
                 {activeGoals.map((goal) => {
                   const progress = calculateProgress(
                     goal.current_amount,
@@ -501,104 +538,113 @@ export default function GoalsEnhanced() {
                   const remaining = goal.target_amount - goal.current_amount;
 
                   return (
-                    <Card
+                    <motion.div
                       key={goal.id}
-                      className="hover-lift transition-all"
+                      variants={itemVariants}
                     >
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <CardTitle className="text-lg">{goal.name}</CardTitle>
-                            {goal.description && (
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {goal.description}
-                              </p>
+                      <AnimatedCard
+                        className="hover-lift transition-all"
+                      >
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <CardTitle className="text-lg">{goal.name}</CardTitle>
+                              {goal.description && (
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {goal.description}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex gap-1">
+                              <AnimatedButton
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEdit(goal)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </AnimatedButton>
+                              <AnimatedButton
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDelete(goal.id)}
+                              >
+                                <Trash2 className="h-4 w-4 text-danger" />
+                              </AnimatedButton>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {getStatusBadge(goal.status)}
+                            <Badge variant="outline">{getPeriodLabel(goal.period)}</Badge>
+                            {goal.categories && (
+                              <Badge
+                                variant="outline"
+                                style={{
+                                  borderColor: goal.categories.color,
+                                  color: goal.categories.color,
+                                }}
+                              >
+                                {goal.categories.name}
+                              </Badge>
                             )}
                           </div>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEdit(goal)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDelete(goal.id)}
-                            >
-                              <Trash2 className="h-4 w-4 text-danger" />
-                            </Button>
+
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Progresso</span>
+                              <span className="font-semibold">
+                                {progress.toFixed(1)}%
+                              </span>
+                            </div>
+                            <Progress value={progress} className="h-3" />
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">
+                                {formatCurrency(goal.current_amount)}
+                              </span>
+                              <span className="font-semibold">
+                                {formatCurrency(goal.target_amount)}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {getStatusBadge(goal.status)}
-                          <Badge variant="outline">{getPeriodLabel(goal.period)}</Badge>
-                          {goal.categories && (
-                            <Badge
-                              variant="outline"
-                              style={{
-                                borderColor: goal.categories.color,
-                                color: goal.categories.color,
-                              }}
-                            >
-                              {goal.categories.name}
-                            </Badge>
+
+                          <div className="pt-2 border-t">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-muted-foreground">
+                                Falta atingir:
+                              </span>
+                              <span className="font-bold text-lg">
+                                {formatCurrency(remaining)}
+                              </span>
+                            </div>
+                          </div>
+
+                          {goal.end_date && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Calendar className="h-4 w-4" />
+                              <span>
+                                Prazo: {new Date(goal.end_date).toLocaleDateString("pt-BR")}
+                              </span>
+                            </div>
                           )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Progresso</span>
-                            <span className="font-semibold">
-                              {progress.toFixed(1)}%
-                            </span>
-                          </div>
-                          <Progress value={progress} className="h-3" />
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">
-                              {formatCurrency(goal.current_amount)}
-                            </span>
-                            <span className="font-semibold">
-                              {formatCurrency(goal.target_amount)}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="pt-2 border-t">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">
-                              Falta atingir:
-                            </span>
-                            <span className="font-bold text-lg">
-                              {formatCurrency(remaining)}
-                            </span>
-                          </div>
-                        </div>
-
-                        {goal.end_date && (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Calendar className="h-4 w-4" />
-                            <span>
-                              Prazo: {new Date(goal.end_date).toLocaleDateString("pt-BR")}
-                            </span>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
+                        </CardContent>
+                      </AnimatedCard>
+                    </motion.div>
                   );
                 })}
-              </div>
+              </motion.div>
             </div>
           )}
 
           {completedGoals.length > 0 && (
             <div className="space-y-4">
               <h2 className="text-xl font-bold">Metas Concluídas</h2>
-              <div className="grid gap-4 md:grid-cols-2">
+              <motion.div
+                variants={listVariants}
+                initial="hidden"
+                animate="show"
+                className="grid gap-4 md:grid-cols-2"
+              >
                 {completedGoals.map((goal) => {
                   const progress = calculateProgress(
                     goal.current_amount,
@@ -606,48 +652,52 @@ export default function GoalsEnhanced() {
                   );
 
                   return (
-                    <Card
+                    <motion.div
                       key={goal.id}
-                      className="opacity-80 hover:opacity-100 transition-opacity"
+                      variants={itemVariants}
                     >
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <CardTitle className="text-lg">{goal.name}</CardTitle>
-                            {goal.description && (
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {goal.description}
-                              </p>
-                            )}
+                      <AnimatedCard
+                        className="opacity-80 hover:opacity-100 transition-opacity"
+                      >
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <CardTitle className="text-lg">{goal.name}</CardTitle>
+                              {goal.description && (
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {goal.description}
+                                </p>
+                              )}
+                            </div>
+                            <AnimatedButton
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(goal.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-danger" />
+                            </AnimatedButton>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(goal.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-danger" />
-                          </Button>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        {getStatusBadge(goal.status)}
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          {getStatusBadge(goal.status)}
 
-                        <div className="space-y-2">
-                          <Progress value={progress} className="h-3" />
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">
-                              {formatCurrency(goal.current_amount)}
-                            </span>
-                            <span className="font-semibold">
-                              {formatCurrency(goal.target_amount)}
-                            </span>
+                          <div className="space-y-2">
+                            <Progress value={progress} className="h-3" />
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">
+                                {formatCurrency(goal.current_amount)}
+                              </span>
+                              <span className="font-semibold">
+                                {formatCurrency(goal.target_amount)}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                        </CardContent>
+                      </AnimatedCard>
+                    </motion.div>
                   );
                 })}
-              </div>
+              </motion.div>
             </div>
           )}
         </>

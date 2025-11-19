@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Upload, FileText } from "lucide-react";
+import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Upload, FileText, DollarSign } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,11 @@ import { TransactionFilters } from "@/components/Transactions/TransactionFilters
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CategoryManager } from "@/components/Categories/CategoryManager";
 import { transactionSchema } from "@/lib/validation";
+import { SkeletonLoader } from "@/components/SkeletonLoader";
+import { AnimatedCard } from "@/components/AnimatedCard";
+import { AnimatedButton } from "@/components/AnimatedButton";
+import { motion } from "framer-motion";
+import ReactConfetti from "react-confetti";
 
 interface Transaction {
   id: string;
@@ -47,6 +52,21 @@ interface Project {
   name: string;
 }
 
+const listVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 },
+};
+
 export default function TransactionsEnhanced() {
   const { user } = useAuth();
   const { currentWorkspace } = useWorkspace();
@@ -57,6 +77,8 @@ export default function TransactionsEnhanced() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+
 
   // Filtros
   const [searchTerm, setSearchTerm] = useState("");
@@ -217,7 +239,12 @@ export default function TransactionsEnhanced() {
 
         if (error) throw error;
         transactionId = data.id;
-        toast.success("Transação criada!");
+        toast.success("Transação criada!", {
+          icon: '🎉',
+          description: "Sua nova transação foi adicionada com sucesso!",
+        });
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
       }
 
       // Upload de recibo se houver
@@ -360,14 +387,20 @@ export default function TransactionsEnhanced() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="space-y-8">
+        <SkeletonLoader className="h-10 w-1/3" />
+        <SkeletonLoader className="h-6 w-1/2" />
+        <SkeletonLoader className="h-40" />
+        <div className="space-y-4">
+          <SkeletonLoader className="h-24" count={3} />
+        </div>
       </div>
     );
   }
 
   return (
     <Tabs defaultValue="transactions" className="space-y-8">
+      {showConfetti && <ReactConfetti recycle={false} numberOfPieces={200} gravity={0.1} />}
       <TabsList>
         <TabsTrigger value="transactions">Transações</TabsTrigger>
         <TabsTrigger value="categories">Categorias</TabsTrigger>
@@ -389,10 +422,10 @@ export default function TransactionsEnhanced() {
             }}
           >
             <DialogTrigger asChild>
-              <Button>
+              <AnimatedButton>
                 <Plus className="mr-2 h-4 w-4" />
                 Nova Transação
-              </Button>
+              </AnimatedButton>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
@@ -536,14 +569,14 @@ export default function TransactionsEnhanced() {
                 </div>
 
                 <div className="flex gap-2">
-                  <Button type="submit" className="flex-1" disabled={uploadingFile}>
+                  <AnimatedButton type="submit" className="flex-1" disabled={uploadingFile}>
                     {uploadingFile
                       ? "Enviando..."
                       : editingTransaction
                       ? "Atualizar"
                       : "Criar"}
-                  </Button>
-                  <Button
+                  </AnimatedButton>
+                  <AnimatedButton
                     type="button"
                     variant="outline"
                     onClick={() => {
@@ -552,7 +585,7 @@ export default function TransactionsEnhanced() {
                     }}
                   >
                     Cancelar
-                  </Button>
+                  </AnimatedButton>
                 </div>
               </form>
             </DialogContent>
@@ -578,93 +611,108 @@ export default function TransactionsEnhanced() {
 
         <div className="space-y-4">
           {filteredTransactions.length === 0 ? (
-            <Card>
-              <CardContent className="text-center py-12">
-                <p className="text-muted-foreground">
-                  {searchTerm || selectedType !== "all" || selectedCategory !== "all"
-                    ? "Nenhuma transação encontrada com os filtros aplicados."
-                    : "Nenhuma transação encontrada."}
-                </p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Clique em "Nova Transação" para começar!
-                </p>
-              </CardContent>
-            </Card>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="text-center py-12"
+            >
+              <DollarSign className="h-16 w-16 mx-auto mb-3 text-muted-foreground opacity-50" />
+              <p className="text-lg font-semibold text-muted-foreground">
+                {searchTerm || selectedType !== "all" || selectedCategory !== "all"
+                  ? "Nenhuma transação encontrada com os filtros aplicados."
+                  : "Nenhuma transação encontrada."}
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Clique em "Nova Transação" para começar!
+              </p>
+              <AnimatedButton onClick={() => setDialogOpen(true)} className="mt-6">
+                <Plus className="mr-2 h-4 w-4" />
+                Adicionar Agora
+              </AnimatedButton>
+            </motion.div>
           ) : (
-            filteredTransactions.map((transaction) => (
-              <Card key={transaction.id} className="hover:shadow-md transition-all">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4 flex-1">
-                      <div
-                        className={`p-3 rounded-xl ${
-                          transaction.type === "income"
-                            ? "bg-success/10 text-success"
-                            : "bg-danger/10 text-danger"
-                        }`}
-                      >
-                        {transaction.type === "income" ? (
-                          <TrendingUp className="h-5 w-5" />
-                        ) : (
-                          <TrendingDown className="h-5 w-5" />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold">{transaction.description}</p>
-                          {transaction.receipt_url && (
-                            <a
-                              href={transaction.receipt_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary hover:text-primary/80"
-                            >
-                              <FileText className="h-4 w-4" />
-                            </a>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {transaction.categories?.name || "Sem categoria"}
-                          {transaction.projects && ` • ${transaction.projects.name}`} •{" "}
-                          {new Date(transaction.date).toLocaleDateString("pt-BR")}
-                        </p>
-                        {transaction.notes && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {transaction.notes}
-                          </p>
-                        )}
-                      </div>
+            <motion.div
+              variants={listVariants}
+              initial="hidden"
+              animate="show"
+              className="space-y-4"
+            >
+              {filteredTransactions.map((transaction) => (
+                <motion.div
+                  key={transaction.id}
+                  variants={itemVariants}
+                  className="flex items-center justify-between p-4 rounded-lg bg-accent/50 hover:bg-accent transition-colors"
+                >
+                  <div className="flex items-center gap-4 flex-1">
+                    <div
+                      className={`p-3 rounded-xl ${
+                        transaction.type === "income"
+                          ? "bg-success/10 text-success"
+                          : "bg-danger/10 text-danger"
+                      }`}
+                    >
+                      {transaction.type === "income" ? (
+                        <TrendingUp className="h-5 w-5" />
+                      ) : (
+                        <TrendingDown className="h-5 w-5" />
+                      )}
                     </div>
-                    <div className="flex items-center gap-4">
-                      <p
-                        className={`text-xl font-bold ${
-                          transaction.type === "income" ? "text-success" : "text-danger"
-                        }`}
-                      >
-                        {transaction.type === "income" ? "+" : "-"}
-                        {formatCurrency(Number(transaction.amount))}
-                      </p>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(transaction)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(transaction.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-danger" />
-                        </Button>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold">{transaction.description}</p>
+                        {transaction.receipt_url && (
+                          <a
+                            href={transaction.receipt_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:text-primary/80"
+                          >
+                            <FileText className="h-4 w-4" />
+                          </a>
+                        )}
                       </div>
+                      <p className="text-sm text-muted-foreground">
+                        {transaction.categories?.name || "Sem categoria"}
+                        {transaction.projects && ` • ${transaction.projects.name}`} •{" "}
+                        {new Date(transaction.date).toLocaleDateString("pt-BR")}
+                      </p>
+                      {transaction.notes && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {transaction.notes}
+                        </p>
+                      )}
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))
+                  <div className="flex items-center gap-4">
+                    <p
+                      className={`text-xl font-bold ${
+                        transaction.type === "income" ? "text-success" : "text-danger"
+                      }`}
+                    >
+                      {transaction.type === "income" ? "+" : "-"}
+                      {formatCurrency(Number(transaction.amount))}
+                    </p>
+                    <div className="flex gap-2">
+                      <AnimatedButton
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEdit(transaction)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </AnimatedButton>
+                      <AnimatedButton
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(transaction.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-danger" />
+                      </AnimatedButton>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
           )}
         </div>
       </TabsContent>

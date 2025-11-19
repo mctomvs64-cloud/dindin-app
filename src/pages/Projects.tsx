@@ -16,6 +16,11 @@ import { Progress } from "@/components/ui/progress";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { projectSchema, folderSchema } from "@/lib/validation";
 import * as LucideIcons from "lucide-react";
+import { SkeletonLoader } from "@/components/SkeletonLoader";
+import { AnimatedCard } from "@/components/AnimatedCard";
+import { AnimatedButton } from "@/components/AnimatedButton";
+import { motion } from "framer-motion";
+import ReactConfetti from "react-confetti";
 
 interface Project {
   id: string;
@@ -72,6 +77,21 @@ const PROJECT_ICONS = [
   "Target", "Briefcase", "Home", "DollarSign", "TrendingUp", "Wallet", "ShoppingBag", "Plane", "Heart", "Lightbulb"
 ];
 
+const listVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 },
+};
+
 export default function Projects() {
   const { user } = useAuth();
   const { currentWorkspace } = useWorkspace();
@@ -103,6 +123,8 @@ export default function Projects() {
     color: "#6366f1",
     icon: "Folder",
   });
+  const [showConfetti, setShowConfetti] = useState(false);
+
 
   useEffect(() => {
     if (user && currentWorkspace) {
@@ -214,7 +236,12 @@ export default function Projects() {
           .insert([projectData]);
 
         if (error) throw error;
-        toast.success("Projeto criado!");
+        toast.success("Projeto criado!", {
+          icon: '✨',
+          description: "Seu novo projeto foi adicionado com sucesso!",
+        });
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
       }
 
       setProjectDialogOpen(false);
@@ -265,7 +292,12 @@ export default function Projects() {
           .insert([folderData]);
 
         if (error) throw error;
-        toast.success("Pasta criada!");
+        toast.success("Pasta criada!", {
+          icon: '📁',
+          description: "Sua nova pasta foi adicionada com sucesso!",
+        });
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
       }
 
       setFolderDialogOpen(false);
@@ -398,7 +430,7 @@ export default function Projects() {
     const ProjectIcon = (LucideIcons as any)[project.icon || "Target"];
 
     return (
-      <Card className="hover:shadow-lg transition-all duration-200 group">
+      <AnimatedCard className="hover:shadow-lg transition-all duration-200 group">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3 flex-1">
@@ -430,20 +462,20 @@ export default function Projects() {
               </div>
             </div>
             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Button
+              <AnimatedButton
                 variant="ghost"
                 size="icon"
                 onClick={() => handleEditProject(project)}
               >
                 <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
+              </AnimatedButton>
+              <AnimatedButton
                 variant="ghost"
                 size="icon"
                 onClick={() => handleDeleteProject(project.id)}
               >
                 <Trash2 className="h-4 w-4 text-danger" />
-              </Button>
+              </AnimatedButton>
             </div>
           </div>
         </CardHeader>
@@ -495,14 +527,21 @@ export default function Projects() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </AnimatedCard>
     );
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="space-y-8">
+        <SkeletonLoader className="h-10 w-1/3" />
+        <SkeletonLoader className="h-6 w-1/2" />
+        <div className="grid gap-4 md:grid-cols-3">
+          <SkeletonLoader className="h-60" count={3} />
+        </div>
+        <div className="space-y-4">
+          <SkeletonLoader className="h-24" count={2} />
+        </div>
       </div>
     );
   }
@@ -511,6 +550,7 @@ export default function Projects() {
 
   return (
     <div className="space-y-6 pb-20 lg:pb-8">
+      {showConfetti && <ReactConfetti recycle={false} numberOfPieces={200} gravity={0.1} />}
       {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -528,10 +568,10 @@ export default function Projects() {
             }}
           >
             <DialogTrigger asChild>
-              <Button variant="outline">
+              <AnimatedButton variant="outline">
                 <FolderOpen className="h-4 w-4 mr-2" />
                 Nova Pasta
-              </Button>
+              </AnimatedButton>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -589,9 +629,9 @@ export default function Projects() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button type="submit" className="w-full">
+                <AnimatedButton type="submit" className="w-full">
                   {editingFolder ? "Atualizar Pasta" : "Criar Pasta"}
-                </Button>
+                </AnimatedButton>
               </form>
             </DialogContent>
           </Dialog>
@@ -604,10 +644,10 @@ export default function Projects() {
             }}
           >
             <DialogTrigger asChild>
-              <Button>
+              <AnimatedButton>
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Projeto
-              </Button>
+              </AnimatedButton>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
@@ -718,7 +758,7 @@ export default function Projects() {
                     {projectForm.tags.map((tag) => (
                       <Badge key={tag} variant="secondary" className="flex items-center gap-1">
                         {tag}
-                        <Button
+                        <AnimatedButton
                           type="button"
                           variant="ghost"
                           size="icon"
@@ -726,7 +766,7 @@ export default function Projects() {
                           onClick={() => removeTag(tag)}
                         >
                           <X className="h-3 w-3" />
-                        </Button>
+                        </AnimatedButton>
                       </Badge>
                     ))}
                   </div>
@@ -742,12 +782,12 @@ export default function Projects() {
                         }
                       }}
                     />
-                    <Button type="button" onClick={addTag}>Adicionar</Button>
+                    <AnimatedButton type="button" onClick={addTag}>Adicionar</AnimatedButton>
                   </div>
                 </div>
-                <Button type="submit" className="w-full">
+                <AnimatedButton type="submit" className="w-full">
                   {editingProject ? "Atualizar Projeto" : "Criar Projeto"}
-                </Button>
+                </AnimatedButton>
               </form>
             </DialogContent>
           </Dialog>
@@ -758,11 +798,18 @@ export default function Projects() {
       {projectsWithoutFolder.length > 0 && (
         <div>
           <h2 className="text-lg font-semibold mb-4">Sem Pasta</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <motion.div
+            variants={listVariants}
+            initial="hidden"
+            animate="show"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          >
             {projectsWithoutFolder.map((project) => (
-              <ProjectCard key={project.id} project={project} />
+              <motion.div key={project.id} variants={itemVariants}>
+                <ProjectCard project={project} />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       )}
 
@@ -774,70 +821,81 @@ export default function Projects() {
             const FolderIcon = (LucideIcons as any)[folder.icon || "Folder"];
 
             return (
-              <AccordionItem
-                key={folder.id}
-                value={folder.id}
-                className="border rounded-lg px-4"
-              >
-                <AccordionTrigger className="hover:no-underline">
-                  <div className="flex items-center gap-3 flex-1">
-                    <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: folder.color }}
-                    >
-                      {FolderIcon && <FolderIcon className="h-5 w-5 text-white" />}
+              <motion.div key={folder.id} variants={itemVariants}>
+                <AccordionItem
+                  value={folder.id}
+                  className="border rounded-lg px-4"
+                >
+                  <AccordionTrigger className="hover:no-underline">
+                    <div className="flex items-center gap-3 flex-1">
+                      <div
+                        className="w-10 h-10 rounded-lg flex items-center justify-center"
+                        style={{ backgroundColor: folder.color }}
+                      >
+                        {FolderIcon && <FolderIcon className="h-5 w-5 text-white" />}
+                      </div>
+                      <div className="text-left">
+                        <p className="font-semibold">{folder.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {folderProjects.length} {folderProjects.length === 1 ? "projeto" : "projetos"}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-left">
-                      <p className="font-semibold">{folder.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {folderProjects.length} {folderProjects.length === 1 ? "projeto" : "projetos"}
-                      </p>
+                    <div className="flex gap-1">
+                      <AnimatedButton
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => { e.stopPropagation(); handleEditFolder(folder); }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </AnimatedButton>
+                      <AnimatedButton
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id); }}
+                      >
+                        <Trash2 className="h-4 w-4 text-danger" />
+                      </AnimatedButton>
                     </div>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => { e.stopPropagation(); handleEditFolder(folder); }}
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <motion.div
+                      variants={listVariants}
+                      initial="hidden"
+                      animate="show"
+                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4"
                     >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id); }}
-                    >
-                      <Trash2 className="h-4 w-4 text-danger" />
-                    </Button>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4">
-                    {folderProjects.map((project) => (
-                      <ProjectCard key={project.id} project={project} />
-                    ))}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
+                      {folderProjects.map((project) => (
+                        <motion.div key={project.id} variants={itemVariants}>
+                          <ProjectCard project={project} />
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                  </AccordionContent>
+                </AccordionItem>
+              </motion.div>
             );
           })}
         </Accordion>
       )}
 
       {projects.length === 0 && folders.length === 0 && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Target className="h-16 w-16 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Nenhum projeto ainda</h3>
-            <p className="text-muted-foreground text-center mb-4">
-              Crie seu primeiro projeto e organize em pastas
-            </p>
-            <Button onClick={() => setProjectDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Criar Primeiro Projeto
-            </Button>
-          </CardContent>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center py-12"
+        >
+          <Target className="h-16 w-16 text-muted-foreground mb-4 opacity-50" />
+          <h3 className="text-lg font-semibold mb-2 text-muted-foreground">Nenhum projeto ainda</h3>
+          <p className="text-muted-foreground text-center mb-4">
+            Crie seu primeiro projeto e organize em pastas
+          </p>
+          <AnimatedButton onClick={() => setProjectDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Criar Primeiro Projeto
+          </AnimatedButton>
+        </motion.div>
       )}
     </div>
   );
