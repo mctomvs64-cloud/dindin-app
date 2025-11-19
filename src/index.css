@@ -1,0 +1,5 @@
+/* Minimal styles for build */
+:root { --bg: #f8fafc }
+html,body,#root { height:100%; }
+body { margin:0; font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:var(--bg); color:#0f172a }
+h1 { color:#4f46e5 }
