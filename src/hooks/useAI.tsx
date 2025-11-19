@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { useWorkspace } from "./useWorkspace";
 import { toast } from "sonner";
+import { geminiModel } from "@/integrations/google-gemini/client"; // Importar o modelo Gemini
 
 interface ChatMessage {
   sender: "user" | "ai";
@@ -44,8 +45,8 @@ export function useAI() {
   const processMessage = useCallback(async (text: string): Promise<AICommand | string> => {
     const lowerText = text.toLowerCase();
 
-    // Simulate AI processing time
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // Simulate AI processing time for immediate responses
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
     // --- Transaction Commands ---
     if (lowerText.includes("gastei") && lowerText.includes("reais")) {
@@ -171,10 +172,22 @@ export function useAI() {
       };
     }
 
-    return {
-      type: "TEXT_RESPONSE",
-      payload: "Desculpe, não entendi. Pode reformular? Tente algo como 'Gastei 50 reais de gasolina' ou 'Cria uma meta de juntar 1000 para viagem'.",
-    };
+    // --- Fallback to Google Gemini for general questions ---
+    try {
+      const result = await geminiModel.generateContent(text);
+      const response = await result.response;
+      const geminiText = response.text();
+      return {
+        type: "TEXT_RESPONSE",
+        payload: geminiText || "Desculpe, não consegui gerar uma resposta no momento. Tente novamente mais tarde.",
+      };
+    } catch (geminiError) {
+      console.error("Erro ao chamar a API do Google Gemini:", geminiError);
+      return {
+        type: "TEXT_RESPONSE",
+        payload: "Desculpe, tive um problema ao me conectar com a inteligência artificial. Por favor, tente novamente.",
+      };
+    }
   }, []);
 
   const sendMessage = useCallback(async (text: string) => {
