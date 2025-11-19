@@ -18,6 +18,7 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import ReactConfetti from "react-confetti";
+import { supabase } from "@/integrations/supabase/client"; // Adicionando a importação do supabase
 
 interface AIChatWindowProps {
   onClose: () => void;
