@@ -5,13 +5,21 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, TrendingDown, DollarSign, BarChart3, PieChart, Calendar } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, BarChart3, PieChart, Calendar as CalendarIcon, Download } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPie, Pie, Cell, Legend, LineChart, Line } from "recharts";
-import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { format, startOfMonth, endOfMonth, subMonths, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { SkeletonLoader } from "@/components/SkeletonLoader";
 import { AnimatedCard } from "@/components/AnimatedCard";
 import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { DateRange } from "react-day-picker";
+import { toast } from "sonner";
 
 const COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#06b6d4", "#ef4444"];
 
@@ -45,6 +53,15 @@ export default function Reports() {
     avgIncome: 0,
     avgExpense: 0,
   });
+
+  // Download dialog states
+  const [isDownloadDialogOpen, setIsDownloadDialogOpen] = useState(false);
+  const [downloadFormat, setDownloadFormat] = useState("csv");
+  const [downloadDateRange, setDownloadDateRange] = useState<DateRange | undefined>({
+    from: startOfMonth(new Date()),
+    to: new Date(),
+  });
+  const [downloadPeriod, setDownloadPeriod] = useState("current");
 
   useEffect(() => {
     if (user && currentWorkspace) {
@@ -157,6 +174,80 @@ export default function Reports() {
     }).format(value);
   };
 
+  const handleDownloadReport = async () => {
+    if (!user || !currentWorkspace || !downloadDateRange?.from) {
+      toast.error("Selecione um período e formato para baixar o relatório.");
+      return;
+    }
+
+    let startDate = format(downloadDateRange.from, "yyyy-MM-dd");
+    let endDate = downloadDateRange.to ? format(downloadDateRange.to, "yyyy-MM-dd") : startDate;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-report', {
+        body: JSON.stringify({
+          user_id: user.id,
+          workspace_id: currentWorkspace.id,
+          startDate,
+          endDate,
+          format: downloadFormat,
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (error) throw error;
+
+      const blob = new Blob([data], { type: downloadFormat === "csv" ? "text/csv" : "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `relatorio_${startDate}_${endDate}.${downloadFormat}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success("Relatório baixado com sucesso!");
+      setIsDownloadDialogOpen(false);
+    } catch (error) {
+      console.error("Erro ao baixar relatório:", error);
+      toast.error("Erro ao baixar relatório.");
+    }
+  };
+
+  const handleDownloadPeriodChange = (value: string) => {
+    setDownloadPeriod(value);
+    const now = new Date();
+    let from: Date | undefined;
+    let to: Date | undefined;
+
+    switch (value) {
+      case "current":
+        from = startOfMonth(now);
+        to = now;
+        break;
+      case "last":
+        from = startOfMonth(subMonths(now, 1));
+        to = endOfMonth(subMonths(now, 1));
+        break;
+      case "last3":
+        from = startOfMonth(subMonths(now, 2));
+        to = now;
+        break;
+      case "last6":
+        from = startOfMonth(subMonths(now, 5));
+        to = now;
+        break;
+      case "custom":
+        from = undefined;
+        to = undefined;
+        break;
+      default:
+        from = startOfMonth(now);
+        to = now;
+    }
+    setDownloadDateRange({ from, to });
+  };
+
   if (loading) {
     return (
       <div className="space-y-8">
@@ -178,17 +269,110 @@ export default function Reports() {
           <h1 className="text-3xl font-bold">Relatórios</h1>
           <p className="text-muted-foreground">Análise detalhada das suas finanças</p>
         </div>
-        <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="current">Mês Atual</SelectItem>
-            <SelectItem value="last">Mês Passado</SelectItem>
-            <SelectItem value="last3">Últimos 3 Meses</SelectItem>
-            <SelectItem value="last6">Últimos 6 Meses</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex gap-2">
+          <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="current">Mês Atual</SelectItem>
+              <SelectItem value="last">Mês Passado</SelectItem>
+              <SelectItem value="last3">Últimos 3 Meses</SelectItem>
+              <SelectItem value="last6">Últimos 6 Meses</SelectItem>
+            </SelectContent>
+          </Select>
+          <Dialog open={isDownloadDialogOpen} onOpenChange={setIsDownloadDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Download className="h-4 w-4 mr-2" />
+                Baixar
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Baixar Relatório</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="download-period" className="text-right">
+                    Período
+                  </Label>
+                  <Select value={downloadPeriod} onValueChange={handleDownloadPeriodChange}>
+                    <SelectTrigger id="download-period" className="col-span-3">
+                      <SelectValue placeholder="Selecione um período" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="current">Mês Atual</SelectItem>
+                      <SelectItem value="last">Mês Passado</SelectItem>
+                      <SelectItem value="last3">Últimos 3 Meses</SelectItem>
+                      <SelectItem value="last6">Últimos 6 Meses</SelectItem>
+                      <SelectItem value="custom">Personalizado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {downloadPeriod === "custom" && (
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="date" className="text-right">
+                      Datas
+                    </Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          id="date"
+                          variant={"outline"}
+                          className={cn(
+                            "col-span-3 justify-start text-left font-normal",
+                            !downloadDateRange?.from && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {downloadDateRange?.from ? (
+                            downloadDateRange.to ? (
+                              <>
+                                {format(downloadDateRange.from, "LLL dd, y", { locale: ptBR })} -{" "}
+                                {format(downloadDateRange.to, "LLL dd, y", { locale: ptBR })}
+                              </>
+                            ) : (
+                              format(downloadDateRange.from, "LLL dd, y", { locale: ptBR })
+                            )
+                          ) : (
+                            <span>Selecione as datas</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          initialFocus
+                          mode="range"
+                          defaultMonth={downloadDateRange?.from}
+                          selected={downloadDateRange}
+                          onSelect={setDownloadDateRange}
+                          numberOfMonths={2}
+                          locale={ptBR}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="download-format" className="text-right">
+                    Formato
+                  </Label>
+                  <Select value={downloadFormat} onValueChange={setDownloadFormat}>
+                    <SelectTrigger id="download-format" className="col-span-3">
+                      <SelectValue placeholder="Selecione o formato" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="csv">CSV</SelectItem>
+                      <SelectItem value="pdf">PDF (Texto Simples)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <Button onClick={handleDownloadReport}>Baixar Relatório</Button>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -254,7 +438,7 @@ export default function Reports() {
       <Tabs defaultValue="monthly" className="space-y-4">
         <TabsList>
           <TabsTrigger value="monthly">
-            <Calendar className="h-4 w-4 mr-2" />
+            <CalendarIcon className="h-4 w-4 mr-2" />
             Mensal
           </TabsTrigger>
           <TabsTrigger value="categories">
