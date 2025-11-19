@@ -12,7 +12,8 @@ import {
   Menu,
   Wallet,
   Calendar,
-  Plus
+  Plus,
+  Zap
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -27,6 +28,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { FloatingActionButton } from "./FloatingActionButton";
 import { SkeletonLoader } from "./SkeletonLoader";
 import { motion } from "framer-motion";
+import { FloatingAIButton } from "./AIChat/FloatingAIButton";
+import { AIChatDrawer } from "./AIChat/AIChatDrawer";
 
 interface LayoutProps {
   children: ReactNode;
@@ -42,6 +45,8 @@ export default function Layout({ children }: LayoutProps) {
   const { currentWorkspace, workspaceLoading, createWorkspace } = useWorkspace();
   const navigate = useNavigate();
   const [isCreateWorkspaceDialogOpen, setIsCreateWorkspaceDialogOpen] = useState(false);
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
+
 
   const [newWorkspaceForm, setNewWorkspaceForm] = useState({
     name: "",
@@ -292,6 +297,8 @@ export default function Layout({ children }: LayoutProps) {
       
       <BottomNav />
       <FloatingActionButton onClick={() => navigate("/transactions")} /> {/* Example FAB, can be customized */}
+      <FloatingAIButton onClick={() => setIsAIChatOpen(true)} />
+      <AIChatDrawer isOpen={isAIChatOpen} onClose={() => setIsAIChatOpen(false)} />
     </div>
   );
 }
