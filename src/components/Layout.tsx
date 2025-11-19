@@ -128,7 +128,7 @@ export default function Layout({ children }: LayoutProps) {
         className="min-h-screen flex flex-col items-center justify-center p-4 text-center bg-background"
       >
         <Wallet className="h-24 w-24 text-primary mb-6 opacity-70 animate-bounce-subtle" />
-        <h2 className="text-2xl font-bold mb-3">Bem-vindo ao FinanceFlow!</h2>
+        <h2 className="text-2xl font-bold mb-3">Bem-vindo ao DinDin!</h2>
         <p className="text-muted-foreground mb-6 max-w-md">
           Parece que você ainda não tem um perfil financeiro. Crie um para começar a organizar suas finanças.
         </p>
@@ -215,7 +215,7 @@ export default function Layout({ children }: LayoutProps) {
                     <div className="bg-primary rounded-lg p-2">
                       <Wallet className="h-5 w-5 text-primary-foreground" />
                     </div>
-                    <span className="font-bold text-lg">Organiza Aí</span>
+                    <span className="font-bold text-lg">DinDin</span>
                   </div>
                   <WorkspaceSelector />
                 </div>
@@ -247,7 +247,7 @@ export default function Layout({ children }: LayoutProps) {
             <div className="bg-primary rounded-lg p-2">
               <Wallet className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="font-bold text-lg">Organiza Aí</span>
+            <span className="font-bold text-lg">DinDin</span>
           </div>
         </div>
       </header>
@@ -260,7 +260,7 @@ export default function Layout({ children }: LayoutProps) {
               <div className="bg-primary rounded-lg p-2">
                 <Wallet className="h-5 w-5 text-primary-foreground" />
               </div>
-              <span className="font-bold text-lg">Organiza Aí</span>
+              <span className="font-bold text-lg">DinDin</span>
             </div>
             <WorkspaceSelector />
           </div>

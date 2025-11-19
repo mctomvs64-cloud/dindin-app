@@ -82,7 +82,7 @@ export default function Auth() {
               <Wallet className="h-10 w-10 text-primary-foreground" />
             </div>
           </motion.div>
-          <h1 className="text-3xl font-bold tracking-tight">FinanceFlow</h1>
+          <h1 className="text-3xl font-bold tracking-tight">DinDin</h1>
           <p className="text-muted-foreground">
             Controle total das suas finanças
           </p>
@@ -124,6 +124,7 @@ export default function Auth() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
+                      minLength={6}
                     />
                   </div>
                 </CardContent>
