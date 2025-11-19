@@ -205,6 +205,56 @@ export type Database = {
           },
         ]
       }
+      chips_control: {
+        Row: {
+          acquired_date: string | null
+          created_at: string
+          id: string
+          last_update_date: string | null
+          name: string | null
+          notes: string | null
+          number: string
+          operator: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          acquired_date?: string | null
+          created_at?: string
+          id?: string
+          last_update_date?: string | null
+          name?: string | null
+          notes?: string | null
+          number: string
+          operator?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          acquired_date?: string | null
+          created_at?: string
+          id?: string
+          last_update_date?: string | null
+          name?: string | null
+          notes?: string | null
+          number?: string
+          operator?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chips_control_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_cash_closures: {
         Row: {
           closure_date: string
@@ -246,6 +296,13 @@ export type Database = {
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "daily_cash_closures_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "daily_cash_closures_workspace_id_fkey"
             columns: ["workspace_id"]
@@ -298,6 +355,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_cash_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -532,38 +596,86 @@ export type Database = {
           },
         ]
       }
+      phone_lists: {
+        Row: {
+          chip_id: string | null
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          phone_numbers: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chip_id?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          phone_numbers?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chip_id?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          phone_numbers?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phone_lists_chip_id_fkey"
+            columns: ["chip_id"]
+            isOneToOne: false
+            referencedRelation: "chips_control"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "phone_lists_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
-          id: string // Referencia auth.users(id)
-          full_name: string | null
           avatar_url: string | null
-          email: string
-          role: string
-          subscription_status: string
-          subscription_expires_at: string | null
           created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          role: string
+          subscription_expires_at: string | null
+          subscription_status: string
           updated_at: string
         }
         Insert: {
-          id: string // Deve ser fornecido de auth.users.id
-          full_name?: string | null
           avatar_url?: string | null
-          email: string
-          role?: string
-          subscription_status?: string
-          subscription_expires_at?: string | null
           created_at?: string
+          email: string
+          full_name?: string | null
+          id: string
+          role?: string
+          subscription_expires_at?: string | null
+          subscription_status?: string
           updated_at?: string
         }
         Update: {
-          id?: string
-          full_name?: string | null
           avatar_url?: string | null
-          email?: string
-          role?: string
-          subscription_status?: string
-          subscription_expires_at?: string | null
           created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          role?: string
+          subscription_expires_at?: string | null
+          subscription_status?: string
           updated_at?: string
         }
         Relationships: [
@@ -648,6 +760,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      purchase_clicks: {
+        Row: {
+          button_location: string
+          city: string | null
+          country: string | null
+          created_at: string
+          id: string
+          latitude: number | null
+          longitude: number | null
+          page_url: string
+          referrer: string | null
+          session_id: string | null
+          user_agent: string | null
+          user_ip: string | null
+          user_name: string | null
+        }
+        Insert: {
+          button_location: string
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          page_url: string
+          referrer?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_ip?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          button_location?: string
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          page_url?: string
+          referrer?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_ip?: string | null
+          user_name?: string | null
+        }
+        Relationships: []
       }
       transactions: {
         Row: {
@@ -770,7 +930,15 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "workspaces_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -778,7 +946,12 @@ export type Database = {
     }
     Functions: {
       calculate_monthly_bills_stats: {
-        Args: { p_month: number; p_user_id: string; p_year: number }
+        Args: {
+          p_month: number
+          p_user_id: string
+          p_workspace_id: string
+          p_year: number
+        }
         Returns: Json
       }
       calculate_project_progress: {
@@ -792,6 +965,18 @@ export type Database = {
       create_default_categories_in_workspace: {
         Args: { p_user_id: string; p_workspace_id: string }
         Returns: undefined
+      }
+      get_current_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      handle_new_user: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      update_updated_at_column: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
     }
     Enums: {
@@ -809,133 +994,32 @@ export type Database = {
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
-
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+type PublicSchema = Database[Extract<keyof Database, "public">]
 
 export type Tables<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  TableName extends keyof (PublicSchema["Tables"] & PublicSchema["Views"]),
+> = (PublicSchema["Tables"] & PublicSchema["Views"])[TableName] extends {
+  Row: infer R
 }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R
-    }
-    ? R
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
-      }
-      ? R
-      : never
-    : never
+  ? R
+  : never
 
 export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  TableName extends keyof PublicSchema["Tables"],
+> = PublicSchema["Tables"][TableName] extends {
+  Insert: infer I
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
-    ? I
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
-      }
-      ? I
-      : never
-    : never
+  ? I
+  : never
 
 export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  TableName extends keyof PublicSchema["Tables"],
+> = PublicSchema["Tables"][TableName] extends {
+  Update: infer U
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
-    ? U
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
-    : never
+  ? U
+  : never
 
 export type Enums<
-  DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
-> = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
-
-export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
-> = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
-
-export const Constants = {
-  public: {
-    Enums: {
-      bill_frequency: ["monthly", "yearly", "custom"],
-      goal_period: ["daily", "weekly", "monthly", "yearly", "custom"],
-      goal_status: ["active", "completed", "cancelled"],
-      payment_status: ["pending", "paid", "overdue"],
-      project_status: ["active", "paused", "completed", "archived"],
-      transaction_frequency: ["once", "daily", "weekly", "monthly", "yearly"],
-      transaction_type: ["income", "expense"],
-    },
-  },
-} as const
+  EnumName extends keyof PublicSchema["Enums"],
+> = PublicSchema["Enums"][EnumName]
