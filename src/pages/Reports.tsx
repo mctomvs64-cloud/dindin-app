@@ -184,7 +184,7 @@ export default function Reports() {
     let endDate = downloadDateRange.to ? format(downloadDateRange.to, "yyyy-MM-dd") : startDate;
 
     try {
-      const { data, error } = await supabase.functions.invoke('generate-report', {
+      const { data, error, rawResponse } = await supabase.functions.invoke('generate-report', {
         body: JSON.stringify({
           user_id: user.id,
           workspace_id: currentWorkspace.id,
@@ -197,7 +197,17 @@ export default function Reports() {
 
       if (error) throw error;
 
-      const blob = new Blob([data], { type: downloadFormat === "csv" ? "text/csv" : "application/pdf" });
+      let fileContent: string;
+      if (rawResponse) {
+        fileContent = await rawResponse.text();
+      } else if (data) {
+        // Fallback if for some reason `data` is not null and contains the content
+        fileContent = typeof data === 'string' ? data : JSON.stringify(data);
+      } else {
+        throw new Error("No content received from report generation.");
+      }
+
+      const blob = new Blob([fileContent], { type: downloadFormat === "csv" ? "text/csv" : "application/pdf" });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -208,9 +218,9 @@ export default function Reports() {
       window.URL.revokeObjectURL(url);
       toast.success("Relatório baixado com sucesso!");
       setIsDownloadDialogOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao baixar relatório:", error);
-      toast.error("Erro ao baixar relatório.");
+      toast.error(`Erro ao baixar relatório: ${error.message || "Ocorreu um erro desconhecido."}`);
     }
   };
 
