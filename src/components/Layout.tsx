@@ -54,6 +54,7 @@ export default function Layout({ children }: LayoutProps) {
 
   const navigation = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
+    { name: "Caixa Diário", href: "/daily-cash", icon: Wallet },
     { name: "Transações", href: "/transactions", icon: Receipt },
     { name: "Contas Fixas", href: "/fixed-bills", icon: Calendar },
     { name: "Projetos", href: "/projects", icon: Target },

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useWorkspace } from "@/hooks/useWorkspace";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2, FolderOpen, TrendingUp, Target } from "lucide-react";
+import { Plus, FolderOpen, Target, TrendingUp, Pencil, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +13,7 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { projectSchema, folderSchema } from "@/lib/validation";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface Project {
   id: string;
@@ -22,15 +23,14 @@ interface Project {
   status: "active" | "paused" | "completed" | "archived";
   target_amount?: number;
   folder_id?: string;
-  folders?: {
-    name: string;
-  };
+  folders?: { name: string };
 }
 
 interface Folder {
   id: string;
   name: string;
   color: string;
+  icon?: string;
 }
 
 interface ProjectStats {
@@ -41,15 +41,29 @@ interface ProjectStats {
   progress: number;
 }
 
+const STATUS_LABELS = {
+  active: "Ativo",
+  paused: "Pausado",
+  completed: "Concluído",
+  archived: "Arquivado",
+};
+
+const STATUS_COLORS = {
+  active: "bg-green-500",
+  paused: "bg-yellow-500",
+  completed: "bg-blue-500",
+  archived: "bg-gray-500",
+};
+
 export default function Projects() {
   const { user } = useAuth();
+  const { currentWorkspace } = useWorkspace();
   const [projects, setProjects] = useState<Project[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [projectStats, setProjectStats] = useState<Map<string, ProjectStats>>(new Map());
   const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
 
   const [projectForm, setProjectForm] = useState({
     name: "",
@@ -63,31 +77,34 @@ export default function Projects() {
   const [folderForm, setFolderForm] = useState({
     name: "",
     color: "#6366f1",
+    icon: "Folder",
   });
 
   useEffect(() => {
-    if (user) {
+    if (user && currentWorkspace) {
       loadData();
     }
-  }, [user]);
+  }, [user, currentWorkspace]);
 
   const loadData = async () => {
+    if (!currentWorkspace) return;
+
     try {
       const [projectsRes, foldersRes] = await Promise.all([
         supabase
           .from("projects")
           .select(`
             *,
-            folders (
-              name
-            )
+            folders (name)
           `)
           .eq("user_id", user?.id)
+          .eq("workspace_id", currentWorkspace.id)
           .order("created_at", { ascending: false }),
         supabase
           .from("folders")
           .select("*")
           .eq("user_id", user?.id)
+          .eq("workspace_id", currentWorkspace.id)
           .order("name", { ascending: true })
       ]);
 
@@ -98,7 +115,6 @@ export default function Projects() {
       setProjects(projectsData);
       setFolders(foldersRes.data || []);
 
-      // Carregar estatísticas de cada projeto
       const statsPromises = projectsData.map(async (project) => {
         const { data, error } = await supabase.rpc(
           "calculate_project_progress",
@@ -125,293 +141,270 @@ export default function Projects() {
     }
   };
 
-  const handleProjectSubmit = async (e: React.FormEvent) => {
+  const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Validate input data
-    const validationResult = projectSchema.safeParse({
-      name: projectForm.name,
-      description: projectForm.description,
-      target_amount: projectForm.target_amount || undefined,
-      color: projectForm.color,
-      status: projectForm.status,
-      folder_id: projectForm.folder_id || undefined,
-    });
-
-    if (!validationResult.success) {
-      const errors = validationResult.error.errors.map(e => e.message).join(", ");
-      toast.error(errors);
-      return;
-    }
+    if (!currentWorkspace) return;
 
     try {
-      const projectData = {
+      const { error } = await supabase.from("projects").insert([{
         user_id: user?.id,
-        name: validationResult.data.name,
-        description: validationResult.data.description || null,
-        color: validationResult.data.color,
-        status: validationResult.data.status,
-        target_amount: validationResult.data.target_amount || null,
-        folder_id: validationResult.data.folder_id || null,
-      };
+        workspace_id: currentWorkspace.id,
+        name: projectForm.name,
+        description: projectForm.description || null,
+        color: projectForm.color,
+        status: projectForm.status,
+        target_amount: projectForm.target_amount ? parseFloat(projectForm.target_amount) : null,
+        folder_id: projectForm.folder_id || null,
+      }]);
 
-      if (editingProject) {
-        const { error } = await supabase
-          .from("projects")
-          .update(projectData)
-          .eq("id", editingProject.id);
-
-        if (error) throw error;
-        toast.success("Projeto atualizado!");
-      } else {
-        const { error } = await supabase
-          .from("projects")
-          .insert([projectData]);
-
-        if (error) throw error;
-        toast.success("Projeto criado!");
-      }
-
-      setDialogOpen(false);
-      resetProjectForm();
+      if (error) throw error;
+      toast.success("Projeto criado!");
+      setProjectDialogOpen(false);
+      setProjectForm({
+        name: "",
+        description: "",
+        color: "#8b5cf6",
+        status: "active",
+        target_amount: "",
+        folder_id: "",
+      });
       loadData();
     } catch (error) {
-      console.error("Erro ao salvar projeto:", error);
-      toast.error("Erro ao salvar projeto");
+      console.error("Erro:", error);
+      toast.error("Erro ao criar projeto");
     }
   };
 
-  const handleFolderSubmit = async (e: React.FormEvent) => {
+  const handleCreateFolder = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Validate input data
-    const validationResult = folderSchema.safeParse({
-      name: folderForm.name,
-      color: folderForm.color,
-    });
-
-    if (!validationResult.success) {
-      const errors = validationResult.error.errors.map(e => e.message).join(", ");
-      toast.error(errors);
-      return;
-    }
+    if (!currentWorkspace) return;
 
     try {
-      const { error } = await supabase
-        .from("folders")
-        .insert([{
-          user_id: user?.id,
-          name: validationResult.data.name,
-          color: validationResult.data.color,
-        }]);
+      const { error } = await supabase.from("folders").insert([{
+        user_id: user?.id,
+        workspace_id: currentWorkspace.id,
+        name: folderForm.name,
+        color: folderForm.color,
+        icon: folderForm.icon,
+      }]);
 
       if (error) throw error;
       toast.success("Pasta criada!");
       setFolderDialogOpen(false);
-      setFolderForm({ name: "", color: "#6366f1" });
+      setFolderForm({ name: "", color: "#6366f1", icon: "Folder" });
       loadData();
     } catch (error) {
-      console.error("Erro ao criar pasta:", error);
+      console.error("Erro:", error);
       toast.error("Erro ao criar pasta");
     }
   };
 
-  const handleDeleteProject = async (id: string) => {
-    if (!confirm("Deseja realmente excluir este projeto?")) return;
-
+  const deleteProject = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from("projects")
-        .delete()
-        .eq("id", id);
-
+      const { error } = await supabase.from("projects").delete().eq("id", id);
       if (error) throw error;
       toast.success("Projeto excluído!");
       loadData();
     } catch (error) {
-      console.error("Erro ao excluir projeto:", error);
+      console.error("Erro:", error);
       toast.error("Erro ao excluir projeto");
     }
   };
 
-  const handleEditProject = (project: Project) => {
-    setEditingProject(project);
-    setProjectForm({
-      name: project.name,
-      description: project.description || "",
-      color: project.color,
-      status: project.status,
-      target_amount: project.target_amount?.toString() || "",
-      folder_id: project.folder_id || "",
-    });
-    setDialogOpen(true);
+  const getProjectsByFolder = (folderId?: string) => {
+    return projects.filter(p => p.folder_id === (folderId || null));
   };
 
-  const resetProjectForm = () => {
-    setEditingProject(null);
-    setProjectForm({
-      name: "",
-      description: "",
-      color: "#8b5cf6",
-      status: "active",
-      target_amount: "",
-      folder_id: "",
-    });
+  const ProjectCard = ({ project }: { project: Project }) => {
+    const stats = projectStats.get(project.id);
+    const progress = stats?.progress || 0;
+    const netAmount = stats?.net_amount || 0;
+    const target = stats?.target || 0;
+
+    return (
+      <Card className="hover:shadow-lg transition-all duration-200 group">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3 flex-1">
+              <div
+                className="w-12 h-12 rounded-lg flex items-center justify-center"
+                style={{ backgroundColor: project.color }}
+              >
+                <Target className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <CardTitle className="text-lg truncate">{project.name}</CardTitle>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge variant="secondary" className="text-xs">
+                    {STATUS_LABELS[project.status]}
+                  </Badge>
+                  {project.folders && (
+                    <Badge variant="outline" className="text-xs">
+                      <FolderOpen className="h-3 w-3 mr-1" />
+                      {project.folders.name}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => deleteProject(project.id)}
+              className="opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {project.description && (
+            <p className="text-sm text-muted-foreground line-clamp-2">
+              {project.description}
+            </p>
+          )}
+          
+          {target > 0 && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Progresso</span>
+                <span className="font-semibold">{Math.round(progress)}%</span>
+              </div>
+              <Progress value={progress} className="h-2" />
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">
+                  R$ {netAmount.toFixed(2)}
+                </span>
+                <span className="text-muted-foreground">
+                  Meta: R$ {target.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {stats && (
+            <div className="grid grid-cols-2 gap-3 pt-2 border-t">
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-1 text-green-600 mb-1">
+                  <TrendingUp className="h-4 w-4" />
+                  <span className="text-xs font-medium">Entradas</span>
+                </div>
+                <p className="text-sm font-semibold">
+                  R$ {stats.total_income.toFixed(2)}
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-1 text-red-600 mb-1">
+                  <TrendingUp className="h-4 w-4 rotate-180" />
+                  <span className="text-xs font-medium">Saídas</span>
+                </div>
+                <p className="text-sm font-semibold">
+                  R$ {stats.total_expense.toFixed(2)}
+                </p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
   };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value);
-  };
-
-  const getStatusBadge = (status: string) => {
-    const labels = {
-      active: { text: "Ativo", className: "bg-success/10 text-success hover:bg-success/20" },
-      paused: { text: "Pausado", className: "bg-warning/10 text-warning hover:bg-warning/20" },
-      completed: { text: "Concluído", className: "bg-primary/10 text-primary hover:bg-primary/20" },
-      archived: { text: "Arquivado", className: "bg-muted text-muted-foreground" },
-    };
-
-    const badgeInfo = labels[status as keyof typeof labels] || labels.active;
-
-    return <Badge className={badgeInfo.className}>{badgeInfo.text}</Badge>;
-  };
-
-  const groupedProjects = folders.reduce((acc, folder) => {
-    acc[folder.id] = projects.filter((p) => p.folder_id === folder.id);
-    return acc;
-  }, {} as Record<string, Project[]>);
-
-  const ungroupedProjects = projects.filter((p) => !p.folder_id);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
+  const projectsWithoutFolder = getProjectsByFolder();
+
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 pb-20 lg:pb-8">
+      {/* Cabeçalho */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Projetos</h1>
-          <p className="text-muted-foreground mt-2">
-            Organize suas finanças por projetos
+          <h1 className="text-3xl font-bold">Projetos</h1>
+          <p className="text-muted-foreground">
+            Organize seus projetos em pastas
           </p>
         </div>
         <div className="flex gap-2">
           <Dialog open={folderDialogOpen} onOpenChange={setFolderDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline">
-                <FolderOpen className="mr-2 h-4 w-4" />
+                <FolderOpen className="h-4 w-4 mr-2" />
                 Nova Pasta
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Nova Pasta</DialogTitle>
+                <DialogTitle>Criar Nova Pasta</DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleFolderSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="folder-name">Nome</Label>
+              <form onSubmit={handleCreateFolder} className="space-y-4">
+                <div>
+                  <Label>Nome da Pasta</Label>
                   <Input
-                    id="folder-name"
                     value={folderForm.name}
-                    onChange={(e) =>
-                      setFolderForm({ ...folderForm, name: e.target.value })
-                    }
-                    placeholder="Ex: Clientes, Pessoal..."
+                    onChange={(e) => setFolderForm({...folderForm, name: e.target.value})}
+                    placeholder="Ex: 2025, Viagens, Reforma"
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="folder-color">Cor</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="folder-color"
-                      type="color"
-                      value={folderForm.color}
-                      onChange={(e) =>
-                        setFolderForm({ ...folderForm, color: e.target.value })
-                      }
-                      className="w-20 h-10"
-                    />
-                    <Input
-                      type="text"
-                      value={folderForm.color}
-                      onChange={(e) =>
-                        setFolderForm({ ...folderForm, color: e.target.value })
-                      }
-                    />
-                  </div>
+                <div>
+                  <Label>Cor</Label>
+                  <Input
+                    type="color"
+                    value={folderForm.color}
+                    onChange={(e) => setFolderForm({...folderForm, color: e.target.value})}
+                  />
                 </div>
-                <Button type="submit" className="w-full">
-                  Criar Pasta
-                </Button>
+                <Button type="submit" className="w-full">Criar Pasta</Button>
               </form>
             </DialogContent>
           </Dialog>
 
-          <Dialog
-            open={dialogOpen}
-            onOpenChange={(open) => {
-              setDialogOpen(open);
-              if (!open) resetProjectForm();
-            }}
-          >
+          <Dialog open={projectDialogOpen} onOpenChange={setProjectDialogOpen}>
             <DialogTrigger asChild>
               <Button>
-                <Plus className="mr-2 h-4 w-4" />
+                <Plus className="h-4 w-4 mr-2" />
                 Novo Projeto
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[550px]">
+            <DialogContent>
               <DialogHeader>
-                <DialogTitle>
-                  {editingProject ? "Editar Projeto" : "Novo Projeto"}
-                </DialogTitle>
+                <DialogTitle>Criar Novo Projeto</DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleProjectSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome do Projeto</Label>
+              <form onSubmit={handleCreateProject} className="space-y-4">
+                <div>
+                  <Label>Nome do Projeto</Label>
                   <Input
-                    id="name"
                     value={projectForm.name}
-                    onChange={(e) =>
-                      setProjectForm({ ...projectForm, name: e.target.value })
-                    }
-                    placeholder="Ex: Site Cliente X, Reforma Casa..."
+                    onChange={(e) => setProjectForm({...projectForm, name: e.target.value})}
                     required
                   />
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description">Descrição (opcional)</Label>
+                <div>
+                  <Label>Descrição</Label>
                   <Textarea
-                    id="description"
                     value={projectForm.description}
-                    onChange={(e) =>
-                      setProjectForm({
-                        ...projectForm,
-                        description: e.target.value,
-                      })
-                    }
-                    placeholder="Descreva o projeto..."
+                    onChange={(e) => setProjectForm({...projectForm, description: e.target.value})}
                   />
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="status">Status</Label>
+                  <div>
+                    <Label>Cor</Label>
+                    <Input
+                      type="color"
+                      value={projectForm.color}
+                      onChange={(e) => setProjectForm({...projectForm, color: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label>Status</Label>
                     <Select
                       value={projectForm.status}
-                      onValueChange={(value: any) =>
-                        setProjectForm({ ...projectForm, status: value })
-                      }
+                      onValueChange={(value: any) => setProjectForm({...projectForm, status: value})}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -424,289 +417,111 @@ export default function Projects() {
                       </SelectContent>
                     </Select>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="target">Meta (opcional)</Label>
-                    <Input
-                      id="target"
-                      type="number"
-                      step="0.01"
-                      value={projectForm.target_amount}
-                      onChange={(e) =>
-                        setProjectForm({
-                          ...projectForm,
-                          target_amount: e.target.value,
-                        })
-                      }
-                      placeholder="0,00"
-                    />
-                  </div>
                 </div>
-
-                {folders.length > 0 && (
-                  <div className="space-y-2">
-                    <Label htmlFor="folder">Pasta (opcional)</Label>
-                    <Select
-                      value={projectForm.folder_id}
-                      onValueChange={(value) =>
-                        setProjectForm({ ...projectForm, folder_id: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sem pasta" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">Sem pasta</SelectItem>
-                        {folders.map((folder) => (
-                          <SelectItem key={folder.id} value={folder.id}>
-                            {folder.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label htmlFor="color">Cor</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="color"
-                      type="color"
-                      value={projectForm.color}
-                      onChange={(e) =>
-                        setProjectForm({ ...projectForm, color: e.target.value })
-                      }
-                      className="w-20 h-10"
-                    />
-                    <Input
-                      type="text"
-                      value={projectForm.color}
-                      onChange={(e) =>
-                        setProjectForm({ ...projectForm, color: e.target.value })
-                      }
-                    />
-                  </div>
+                <div>
+                  <Label>Meta Financeira (opcional)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={projectForm.target_amount}
+                    onChange={(e) => setProjectForm({...projectForm, target_amount: e.target.value})}
+                    placeholder="R$ 0,00"
+                  />
                 </div>
-
-                <div className="flex gap-2">
-                  <Button type="submit" className="flex-1">
-                    {editingProject ? "Atualizar" : "Criar"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setDialogOpen(false);
-                      resetProjectForm();
-                    }}
+                <div>
+                  <Label>Pasta (opcional)</Label>
+                  <Select
+                    value={projectForm.folder_id}
+                    onValueChange={(value) => setProjectForm({...projectForm, folder_id: value})}
                   >
-                    Cancelar
-                  </Button>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sem pasta" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Sem pasta</SelectItem>
+                      {folders.map((folder) => (
+                        <SelectItem key={folder.id} value={folder.id}>
+                          {folder.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
+                <Button type="submit" className="w-full">Criar Projeto</Button>
               </form>
             </DialogContent>
           </Dialog>
         </div>
       </div>
 
-      {projects.length === 0 ? (
+      {/* Projetos sem pasta */}
+      {projectsWithoutFolder.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold mb-4">Sem Pasta</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {projectsWithoutFolder.map((project) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Projetos organizados por pasta */}
+      {folders.length > 0 && (
+        <Accordion type="multiple" className="space-y-4" defaultValue={folders.map(f => f.id)}>
+          {folders.map((folder) => {
+            const folderProjects = getProjectsByFolder(folder.id);
+            if (folderProjects.length === 0) return null;
+
+            return (
+              <AccordionItem
+                key={folder.id}
+                value={folder.id}
+                className="border rounded-lg px-4"
+              >
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-10 h-10 rounded-lg flex items-center justify-center"
+                      style={{ backgroundColor: folder.color }}
+                    >
+                      <FolderOpen className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-semibold">{folder.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {folderProjects.length} {folderProjects.length === 1 ? "projeto" : "projetos"}
+                      </p>
+                    </div>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4">
+                    {folderProjects.map((project) => (
+                      <ProjectCard key={project.id} project={project} />
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            );
+          })}
+        </Accordion>
+      )}
+
+      {projects.length === 0 && (
         <Card>
-          <CardContent className="text-center py-12">
-            <div className="flex justify-center mb-4">
-              <div className="bg-primary/10 rounded-full p-6">
-                <Target className="h-12 w-12 text-primary" />
-              </div>
-            </div>
-            <h3 className="text-xl font-semibold mb-2">Nenhum projeto ainda</h3>
-            <p className="text-muted-foreground max-w-md mx-auto mb-4">
-              Crie projetos para organizar suas transações e acompanhar o progresso de cada um.
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Target className="h-16 w-16 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Nenhum projeto ainda</h3>
+            <p className="text-muted-foreground text-center mb-4">
+              Crie seu primeiro projeto e organize em pastas
             </p>
-            <Button onClick={() => setDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
+            <Button onClick={() => setProjectDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
               Criar Primeiro Projeto
             </Button>
           </CardContent>
         </Card>
-      ) : (
-        <div className="space-y-8">
-          {folders.map((folder) => {
-            const folderProjects = groupedProjects[folder.id] || [];
-            if (folderProjects.length === 0) return null;
-
-            return (
-              <div key={folder.id} className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-1 h-8 rounded-full"
-                    style={{ backgroundColor: folder.color }}
-                  />
-                  <h2 className="text-xl font-bold">{folder.name}</h2>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {folderProjects.map((project) => {
-                    const stats = projectStats.get(project.id);
-                    return (
-                      <Card
-                        key={project.id}
-                        className="hover:shadow-lg transition-all"
-                        style={{ borderLeftColor: project.color, borderLeftWidth: "4px" }}
-                      >
-                        <CardHeader>
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <CardTitle className="text-lg">{project.name}</CardTitle>
-                              {project.description && (
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  {project.description}
-                                </p>
-                              )}
-                            </div>
-                            <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleEditProject(project)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDeleteProject(project.id)}
-                              >
-                                <Trash2 className="h-4 w-4 text-danger" />
-                              </Button>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          {getStatusBadge(project.status)}
-
-                          {stats && (
-                            <>
-                              <div className="space-y-2">
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-success">
-                                    Entradas: {formatCurrency(stats.total_income)}
-                                  </span>
-                                  <span className="text-danger">
-                                    Saídas: {formatCurrency(stats.total_expense)}
-                                  </span>
-                                </div>
-                                <div className="text-lg font-bold">
-                                  Saldo: {formatCurrency(stats.net_amount)}
-                                </div>
-                              </div>
-
-                              {stats.target && (
-                                <div className="space-y-2">
-                                  <div className="flex justify-between text-sm">
-                                    <span>Progresso</span>
-                                    <span className="font-semibold">
-                                      {stats.progress.toFixed(0)}%
-                                    </span>
-                                  </div>
-                                  <Progress value={stats.progress} />
-                                  <p className="text-xs text-muted-foreground">
-                                    Meta: {formatCurrency(stats.target)}
-                                  </p>
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-
-          {ungroupedProjects.length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-xl font-bold">Sem Pasta</h2>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {ungroupedProjects.map((project) => {
-                  const stats = projectStats.get(project.id);
-                  return (
-                    <Card
-                      key={project.id}
-                      className="hover:shadow-lg transition-all"
-                      style={{ borderLeftColor: project.color, borderLeftWidth: "4px" }}
-                    >
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <CardTitle className="text-lg">{project.name}</CardTitle>
-                            {project.description && (
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {project.description}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEditProject(project)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteProject(project.id)}
-                            >
-                              <Trash2 className="h-4 w-4 text-danger" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        {getStatusBadge(project.status)}
-
-                        {stats && (
-                          <>
-                            <div className="space-y-2">
-                              <div className="flex justify-between text-sm">
-                                <span className="text-success">
-                                  Entradas: {formatCurrency(stats.total_income)}
-                                </span>
-                                <span className="text-danger">
-                                  Saídas: {formatCurrency(stats.total_expense)}
-                                </span>
-                              </div>
-                              <div className="text-lg font-bold">
-                                Saldo: {formatCurrency(stats.net_amount)}
-                              </div>
-                            </div>
-
-                            {stats.target && (
-                              <div className="space-y-2">
-                                <div className="flex justify-between text-sm">
-                                  <span>Progresso</span>
-                                  <span className="font-semibold">
-                                    {stats.progress.toFixed(0)}%
-                                  </span>
-                                </div>
-                                <Progress value={stats.progress} />
-                                <p className="text-xs text-muted-foreground">
-                                  Meta: {formatCurrency(stats.target)}
-                                </p>
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
       )}
     </div>
   );
