@@ -665,7 +665,7 @@ export type Database = {
           type: Database["public"]["Enums"]["transaction_type"]
           updated_at: string | null
           user_id: string
-          workspace_id: string | null
+          workspace_id: string
         }
         Insert: {
           amount: number
@@ -684,7 +684,7 @@ export type Database = {
           type: Database["public"]["Enums"]["transaction_type"]
           updated_at?: string | null
           user_id: string
-          workspace_id?: string | null
+          workspace_id: string
         }
         Update: {
           amount?: number
@@ -703,7 +703,7 @@ export type Database = {
           type?: Database["public"]["Enums"]["transaction_type"]
           updated_at?: string | null
           user_id?: string
-          workspace_id?: string | null
+          workspace_id?: string
         }
         Relationships: [
           {
