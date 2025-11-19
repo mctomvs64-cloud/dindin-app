@@ -534,27 +534,47 @@ export type Database = {
       }
       profiles: {
         Row: {
-          avatar_url: string | null
-          created_at: string | null
+          id: string // Referencia auth.users(id)
           full_name: string | null
-          id: string
-          updated_at: string | null
+          avatar_url: string | null
+          email: string
+          role: string
+          subscription_status: string
+          subscription_expires_at: string | null
+          created_at: string
+          updated_at: string
         }
         Insert: {
-          avatar_url?: string | null
-          created_at?: string | null
+          id: string // Deve ser fornecido de auth.users.id
           full_name?: string | null
-          id: string
-          updated_at?: string | null
+          avatar_url?: string | null
+          email: string
+          role?: string
+          subscription_status?: string
+          subscription_expires_at?: string | null
+          created_at?: string
+          updated_at?: string
         }
         Update: {
-          avatar_url?: string | null
-          created_at?: string | null
-          full_name?: string | null
           id?: string
-          updated_at?: string | null
+          full_name?: string | null
+          avatar_url?: string | null
+          email?: string
+          role?: string
+          subscription_status?: string
+          subscription_expires_at?: string | null
+          created_at?: string
+          updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       projects: {
         Row: {

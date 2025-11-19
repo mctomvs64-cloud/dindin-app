@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useWorkspace } from "@/hooks/useWorkspace"; // Import useWorkspace
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -16,10 +17,12 @@ interface Category {
   icon: string;
   color: string;
   type: "income" | "expense";
+  workspace_id: string; // Adicionado workspace_id à interface
 }
 
 export function CategoryManager() {
   const { user } = useAuth();
+  const { currentWorkspace } = useWorkspace(); // Usando o hook useWorkspace
   const [categories, setCategories] = useState<Category[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -31,17 +34,19 @@ export function CategoryManager() {
   });
 
   useEffect(() => {
-    if (user) {
+    if (user && currentWorkspace) { // Garante que currentWorkspace esteja disponível
       loadCategories();
     }
-  }, [user]);
+  }, [user, currentWorkspace]); // Adicionado currentWorkspace às dependências
 
   const loadCategories = async () => {
+    if (!currentWorkspace) return; // Verifica se há um perfil de trabalho selecionado
     try {
       const { data, error } = await supabase
         .from("categories")
         .select("*")
         .eq("user_id", user?.id)
+        .eq("workspace_id", currentWorkspace.id) // Filtra por workspace_id
         .order("type", { ascending: true })
         .order("name", { ascending: true });
 
@@ -60,10 +65,15 @@ export function CategoryManager() {
       toast.error("Nome da categoria é obrigatório");
       return;
     }
+    if (!currentWorkspace) { // Garante que currentWorkspace esteja disponível antes de salvar
+      toast.error("Nenhum perfil de trabalho selecionado. Por favor, selecione um perfil.");
+      return;
+    }
 
     try {
       const categoryData = {
         user_id: user?.id,
+        workspace_id: currentWorkspace.id, // Inclui workspace_id
         name: formData.name.trim(),
         icon: formData.icon,
         color: formData.color,
@@ -102,12 +112,17 @@ export function CategoryManager() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Deseja realmente excluir esta categoria?")) return;
+    if (!currentWorkspace) { // Verifica se há um perfil de trabalho selecionado
+      toast.error("Nenhum perfil de trabalho selecionado.");
+      return;
+    }
 
     try {
       const { error } = await supabase
         .from("categories")
         .delete()
-        .eq("id", id);
+        .eq("id", id)
+        .eq("workspace_id", currentWorkspace.id); // Garante que a exclusão seja restrita ao workspace
 
       if (error) throw error;
       toast.success("Categoria excluída!");
