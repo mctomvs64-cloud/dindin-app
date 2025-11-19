@@ -14,8 +14,8 @@ export function FloatingAIButton({ onClick, className }: FloatingAIButtonProps) 
   return (
     <motion.div
       className={cn(
-        "fixed bottom-20 right-20 z-40", // Adjust position to not overlap with FAB
-        "md:bottom-4 md:right-20", // Desktop position
+        "fixed bottom-20 left-4 z-40", // Posicionado no canto inferior esquerdo para mobile
+        "md:bottom-4 md:left-4", // Posicionado no canto inferior esquerdo para desktop
         className
       )}
       animate={{
