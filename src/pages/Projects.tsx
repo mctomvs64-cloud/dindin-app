@@ -25,7 +25,7 @@ interface Project {
   icon?: string;
   status: "active" | "paused" | "completed" | "archived";
   target_amount?: number;
-  folder_id?: string;
+  folder_id?: string | null; // Allow null
   folders?: { name: string };
   tags?: string[];
 }
@@ -90,7 +90,7 @@ export default function Projects() {
     icon: "Target",
     status: "active" as "active" | "paused" | "completed" | "archived",
     target_amount: "",
-    folder_id: "",
+    folder_id: null as string | null, // Initialize as null
     tags: [] as string[],
     newTag: "",
   });
@@ -175,7 +175,7 @@ export default function Projects() {
       color: projectForm.color,
       icon: projectForm.icon,
       status: projectForm.status,
-      target_amount: projectForm.target_amount,
+      target_amount: projectForm.target_amount === "" ? null : projectForm.target_amount, // Convert empty string to null for validation
       folder_id: projectForm.folder_id,
       tags: projectForm.tags,
     });
@@ -195,8 +195,8 @@ export default function Projects() {
         color: validationResult.data.color,
         icon: validationResult.data.icon || "Target",
         status: validationResult.data.status,
-        target_amount: validationResult.data.target_amount ? parseFloat(validationResult.data.target_amount.toString()) : null,
-        folder_id: validationResult.data.folder_id || null,
+        target_amount: validationResult.data.target_amount,
+        folder_id: validationResult.data.folder_id,
         tags: validationResult.data.tags || [],
       };
 
@@ -328,7 +328,7 @@ export default function Projects() {
       icon: project.icon || "Target",
       status: project.status,
       target_amount: project.target_amount?.toString() || "",
-      folder_id: project.folder_id || "",
+      folder_id: project.folder_id || null, // Ensure null for no folder
       tags: project.tags || [],
       newTag: "",
     });
@@ -354,7 +354,7 @@ export default function Projects() {
       icon: "Target",
       status: "active",
       target_amount: "",
-      folder_id: "",
+      folder_id: null, // Reset to null
       tags: [],
       newTag: "",
     });
@@ -369,7 +369,7 @@ export default function Projects() {
     });
   };
 
-  const getProjectsByFolder = (folderId?: string) => {
+  const getProjectsByFolder = (folderId?: string | null) => {
     return projects.filter(p => p.folder_id === (folderId || null));
   };
 
@@ -693,14 +693,17 @@ export default function Projects() {
                 <div>
                   <Label>Pasta (opcional)</Label>
                   <Select
-                    value={projectForm.folder_id}
-                    onValueChange={(value) => setProjectForm({...projectForm, folder_id: value})}
+                    value={projectForm.folder_id === null ? "null-folder-option" : projectForm.folder_id}
+                    onValueChange={(value) => setProjectForm({
+                      ...projectForm,
+                      folder_id: value === "null-folder-option" ? null : value
+                    })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Sem pasta" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Sem pasta</SelectItem>
+                      <SelectItem value="null-folder-option">Sem pasta</SelectItem>
                       {folders.map((folder) => (
                         <SelectItem key={folder.id} value={folder.id}>
                           {folder.name}
