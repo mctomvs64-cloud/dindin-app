@@ -20,18 +20,26 @@ interface WorkspaceContextType {
   createWorkspace: (data: Partial<Workspace>) => Promise<void>;
   updateWorkspace: (id: string, data: Partial<Workspace>) => Promise<void>;
   deleteWorkspace: (id: string) => Promise<void>;
+  workspaceLoading: boolean; // Add loading state for workspaces
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth(); // Get auth loading state
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [currentWorkspace, setCurrentWorkspaceState] = useState<Workspace | null>(null);
+  const [workspaceLoading, setWorkspaceLoading] = useState(true); // New loading state
 
   const loadWorkspaces = async () => {
-    if (!user) return;
+    if (!user) {
+      setWorkspaces([]);
+      setCurrentWorkspaceState(null);
+      setWorkspaceLoading(false);
+      return;
+    }
 
+    setWorkspaceLoading(true);
     try {
       const { data, error } = await supabase
         .from("workspaces")
@@ -44,16 +52,21 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
       setWorkspaces(data || []);
 
-      // Se não tem workspace atual, pega o padrão ou o primeiro
-      if (!currentWorkspace && data && data.length > 0) {
-        const defaultWs = data.find((w) => w.is_default) || data[0];
+      // Determine current workspace
+      let selectedWs: Workspace | null = null;
+      if (data && data.length > 0) {
         const savedWorkspaceId = localStorage.getItem("currentWorkspaceId");
-        const savedWs = data.find((w) => w.id === savedWorkspaceId);
-        setCurrentWorkspaceState(savedWs || defaultWs);
+        selectedWs = data.find((w) => w.id === savedWorkspaceId) || data.find((w) => w.is_default) || data[0];
       }
+      setCurrentWorkspaceState(selectedWs);
+      
     } catch (error) {
       console.error("Erro ao carregar workspaces:", error);
       toast.error("Erro ao carregar perfis");
+      setWorkspaces([]); // Clear workspaces on error
+      setCurrentWorkspaceState(null); // Clear current workspace on error
+    } finally {
+      setWorkspaceLoading(false);
     }
   };
 
@@ -63,10 +76,13 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   };
 
   const createWorkspace = async (data: Partial<Workspace>) => {
-    if (!user) return;
+    if (!user) {
+      toast.error("Usuário não autenticado.");
+      return;
+    }
 
     try {
-      const { error } = await supabase.from("workspaces").insert([
+      const { data: newWorkspace, error } = await supabase.from("workspaces").insert([
         {
           user_id: user.id,
           name: data.name,
@@ -75,12 +91,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           icon: data.icon || "Briefcase",
           is_default: false,
         },
-      ]);
+      ]).select().single(); // Select the newly created workspace
 
       if (error) throw error;
 
       toast.success("Perfil criado com sucesso!");
-      await loadWorkspaces();
+      await loadWorkspaces(); // Reload all workspaces
+      if (newWorkspace) {
+        setCurrentWorkspace(newWorkspace); // Set the new workspace as current
+      }
     } catch (error) {
       console.error("Erro ao criar workspace:", error);
       toast.error("Erro ao criar perfil");
@@ -98,6 +117,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
       toast.success("Perfil atualizado!");
       await loadWorkspaces();
+      // If the updated workspace is the current one, update its state
+      if (currentWorkspace?.id === id) {
+        setCurrentWorkspaceState((prev) => (prev ? { ...prev, ...data } : null));
+      }
     } catch (error) {
       console.error("Erro ao atualizar workspace:", error);
       toast.error("Erro ao atualizar perfil");
@@ -112,15 +135,19 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
       toast.success("Perfil excluído!");
       
-      // Se deletou o workspace atual, muda para o padrão
+      // If deleted the current workspace, switch to default or first available
       if (currentWorkspace?.id === id) {
-        const defaultWs = workspaces.find((w) => w.is_default && w.id !== id);
+        const remainingWorkspaces = workspaces.filter(w => w.id !== id);
+        const defaultWs = remainingWorkspaces.find((w) => w.is_default) || remainingWorkspaces[0];
+        setCurrentWorkspaceState(defaultWs || null);
         if (defaultWs) {
-          setCurrentWorkspace(defaultWs);
+          localStorage.setItem("currentWorkspaceId", defaultWs.id);
+        } else {
+          localStorage.removeItem("currentWorkspaceId");
         }
       }
       
-      await loadWorkspaces();
+      await loadWorkspaces(); // Reload to ensure UI is consistent
     } catch (error) {
       console.error("Erro ao excluir workspace:", error);
       toast.error("Erro ao excluir perfil");
@@ -128,10 +155,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    if (user) {
+    // Only load workspaces if auth is not loading and user state is known
+    if (!authLoading) {
       loadWorkspaces();
     }
-  }, [user]);
+  }, [user, authLoading]); // Depend on user and authLoading
 
   return (
     <WorkspaceContext.Provider
@@ -143,6 +171,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         createWorkspace,
         updateWorkspace,
         deleteWorkspace,
+        workspaceLoading, // Provide the loading state
       }}
     >
       {children}

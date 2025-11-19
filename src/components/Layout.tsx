@@ -1,6 +1,7 @@
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useWorkspace } from "@/hooks/useWorkspace";
 import { 
   LayoutDashboard, 
   Receipt, 
@@ -10,7 +11,8 @@ import {
   LogOut,
   Menu,
   Wallet,
-  Calendar
+  Calendar,
+  Plus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -18,22 +20,51 @@ import { NavLink } from "@/components/NavLink";
 import { WorkspaceSelector } from "@/components/WorkspaceSelector";
 import { BottomNav } from "@/components/BottomNav";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 interface LayoutProps {
   children: ReactNode;
 }
 
+const WORKSPACE_COLORS = [
+  "#6366F1", "#10B981", "#EF4444", "#F59E0B", "#8B5CF6", 
+  "#EC4899", "#14B8A6", "#F97316", "#06B6D4"
+];
+
 export default function Layout({ children }: LayoutProps) {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
+  const { currentWorkspace, workspaceLoading, createWorkspace } = useWorkspace();
   const navigate = useNavigate();
+  const [isCreateWorkspaceDialogOpen, setIsCreateWorkspaceDialogOpen] = useState(false);
+
+  const [newWorkspaceForm, setNewWorkspaceForm] = useState({
+    name: "",
+    description: "",
+    color: "#6366F1",
+    icon: "Briefcase",
+  });
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!authLoading && !user) {
       navigate("/auth");
     }
-  }, [user, loading, navigate]);
+  }, [user, authLoading, navigate]);
 
-  if (loading) {
+  const handleCreateNewWorkspace = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newWorkspaceForm.name.trim()) {
+      toast.error("O nome do perfil é obrigatório.");
+      return;
+    }
+    await createWorkspace(newWorkspaceForm);
+    setNewWorkspaceForm({ name: "", description: "", color: "#6366F1", icon: "Briefcase" });
+    setIsCreateWorkspaceDialogOpen(false);
+  };
+
+  if (authLoading || workspaceLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -78,6 +109,80 @@ export default function Layout({ children }: LayoutProps) {
       ))}
     </>
   );
+
+  // If user is logged in but no workspace is found (e.g., first login or all deleted)
+  if (!currentWorkspace && user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center bg-background">
+        <Wallet className="h-24 w-24 text-primary mb-6 opacity-70" />
+        <h2 className="text-2xl font-bold mb-3">Bem-vindo ao FinanceFlow!</h2>
+        <p className="text-muted-foreground mb-6 max-w-md">
+          Parece que você ainda não tem um perfil financeiro. Crie um para começar a organizar suas finanças.
+        </p>
+        <Button onClick={() => setIsCreateWorkspaceDialogOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Criar Primeiro Perfil
+        </Button>
+
+        <Dialog open={isCreateWorkspaceDialogOpen} onOpenChange={setIsCreateWorkspaceDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Criar Novo Perfil</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleCreateNewWorkspace} className="space-y-4">
+              <div>
+                <Label htmlFor="name">Nome do Perfil *</Label>
+                <Input
+                  id="name"
+                  value={newWorkspaceForm.name}
+                  onChange={(e) => setNewWorkspaceForm({ ...newWorkspaceForm, name: e.target.value })}
+                  placeholder="Ex: Empresa X, Freelance, Família..."
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="description">Descrição</Label>
+                <Textarea
+                  id="description"
+                  value={newWorkspaceForm.description}
+                  onChange={(e) => setNewWorkspaceForm({ ...newWorkspaceForm, description: e.target.value })}
+                  placeholder="Descrição opcional..."
+                  rows={2}
+                />
+              </div>
+
+              <div>
+                <Label>Cor do Perfil</Label>
+                <div className="flex gap-2 mt-2 flex-wrap">
+                  {WORKSPACE_COLORS.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setNewWorkspaceForm({ ...newWorkspaceForm, color })}
+                      className="w-8 h-8 rounded-full border-2 transition-all hover:scale-110"
+                      style={{
+                        backgroundColor: color,
+                        borderColor: newWorkspaceForm.color === color ? color : "transparent",
+                        boxShadow: newWorkspaceForm.color === color ? `0 0 0 2px white, 0 0 0 4px ${color}` : "none",
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setIsCreateWorkspaceDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit">Criar Perfil</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
