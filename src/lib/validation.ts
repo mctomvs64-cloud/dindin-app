@@ -80,7 +80,9 @@ export const projectSchema = z.object({
     .or(z.literal('')),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, { message: "Cor inválida" }),
   status: z.enum(['active', 'paused', 'completed', 'archived']),
-  folder_id: z.string().optional(),
+  folder_id: z.string().optional().or(z.literal('')), // Allow empty string for no folder
+  icon: z.string().optional(), // Added icon field
+  tags: z.array(z.string()).optional(), // Added tags field
 });
 
 // Folder validation schema
@@ -89,4 +91,5 @@ export const folderSchema = z.object({
     .min(1, { message: "Nome é obrigatório" })
     .max(200, { message: "Nome muito longo (máx. 200 caracteres)" }),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, { message: "Cor inválida" }),
+  icon: z.string().optional(), // Added icon field
 });
