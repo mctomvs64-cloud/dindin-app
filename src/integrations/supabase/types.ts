@@ -958,10 +958,6 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: Json
       }
-      create_default_categories: {
-        Args: { p_user_id: string }
-        Returns: undefined
-      }
       create_default_categories_in_workspace: {
         Args: { p_user_id: string; p_workspace_id: string }
         Returns: undefined
